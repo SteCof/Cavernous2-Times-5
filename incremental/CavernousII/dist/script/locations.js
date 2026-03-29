@@ -23,7 +23,7 @@ class MapLocation {
         this.water = this.type.startWater;
     }
     get priorCompletions() {
-        return this.priorCompletionData[currentRealm];
+        return (this.priorCompletionData[currentRealm]*5);
     }
     get type() {
         if (currentRealm === 2) {
