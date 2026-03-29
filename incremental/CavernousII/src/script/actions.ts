@@ -239,7 +239,7 @@ function longZoneCompletionMult(x: number, y: number, z: number) {
 	if (x === undefined || y === undefined) return 1;
 	const location = zones[z].getMapLocation(x, y, true);
 	if (location === null) throw new Error("Location not found");
-	return 0.99 ** (location.priorCompletionData[1] ** 0.75);
+	return 0.99 ** ((location.priorCompletionData[1]*5) ** 0.75);
 }
 
 function canMineMana(location: MapLocation) {
