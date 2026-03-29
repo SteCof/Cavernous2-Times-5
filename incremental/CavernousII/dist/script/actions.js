@@ -185,6 +185,10 @@ function completeSaltMine(loc) {
 function completeCollectMana(loc) {
     Route.updateBestRoute(loc, true);
     zones[currentZone].mineComplete();
+    zones[currentZone].mineComplete();
+    zones[currentZone].mineComplete();
+    zones[currentZone].mineComplete();
+    zones[currentZone].mineComplete();
     setMined(loc.x, loc.y, ".");
     if (realms[currentRealm].name === "Long Realm") {
         routes.forEach(r => {
