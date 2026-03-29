@@ -93,21 +93,21 @@ class Zone {
     }
     mineComplete() {
         let realm;
-        this.manaGain = +(this.manaGain + 0.1).toFixed(2);
+        this.manaGain = +(this.manaGain + 0.5).toFixed(2);
         let mana = getStat("Mana");
-        mana.base = +(mana.base + 0.1).toFixed(2);
-        mana.current += 0.1;
-        this.cacheManaGain[currentRealm] += 0.1;
+        mana.base = +(mana.base + 0.5).toFixed(2);
+        mana.current += 0.5;
+        this.cacheManaGain[currentRealm] += 0.5;
         if (this.index) {
             zones[this.index - 1].mineComplete();
         }
         realm = getRealm("Verdant Realm");
         if (realms[currentRealm].name == "Verdant Realm" && this.index == 0 && realm.mult !== null) {
-            realm.mult += 0.0005;
+            realm.mult += 0.0025;
         }
         realm = getRealm("Compounding Realm");
         if (realms[currentRealm].name == "Compounding Realm" && this.index == 0 && realm.mult !== null) {
-            realm.mult += 0.05;
+            realm.mult += 0.25;
             stats
                 .filter(s => s.learnable && s.base >= 99 + getRealmMult("Compounding Realm"))
                 .forEach(s => {
