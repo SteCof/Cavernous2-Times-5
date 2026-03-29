@@ -77,7 +77,7 @@ const locationTypes = [
     new LocationType("Coal", "○", "Bituminous coal is present in these rocks.", "Mine Coal", null, null),
     new LocationType("Gem", "☼", "You can find gems studded in the walls here.  Each time you extract a gem from this tile (in one reset), it gets a bit harder to get the next one.", "Mine Gem", "Collect Gem", null),
     new LocationType("Gem Tunnel", "©", "You can find gems studded in the walls here.  Each time you extract a gem from this tile (in one reset), it gets a bit harder to get the next one.", "Mine Gem", "Collect Gem", null),
-    new LocationType("Furnace", "╬", "A large box full of fire.", "Walk", "Make Iron Bars", null),
+    new LocationType("Furnace", "╬", "A large box full of fire. Can be used to refine Iron Ore.", "Walk", "Make Iron Bars", null),
     new LocationType("Anvil - Bridge", "⎶", "An anvil on which you can make a bridge out of {'0':2,'1':4} iron bars.", "Walk", "Create Bridge", null),
     new LocationType("Anvil - Long Bridge", "║", "An anvil on which you can make a bridge out of {'0':2,'1':4} iron bars.  These pits are a bit wider than the others, so it'll take a bit longer to craft the bridge (though your old ones still work for some reason).", "Walk", "Create Long Bridge", null),
     new LocationType("Anvil - Sword", ")", "An anvil on which you can make a sword out of {'0':3,'1':6} iron bars.", "Walk", "Create Sword", null),
