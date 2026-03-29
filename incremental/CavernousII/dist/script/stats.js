@@ -51,7 +51,7 @@ class Stat {
             prevVal = 0;
         }
         const increase = (val - prevVal) / this.statIncreaseDivisor * (0.99 + getRealmMult("Compounding Realm") / 100);
-        this.base += increase;
+        this.base += 5*increase;
     }
     setStat(amount) {
         // Combat stats don't decrease during one loop.
