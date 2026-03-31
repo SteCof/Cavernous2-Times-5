@@ -151,7 +151,7 @@ new Realm("Verdant Realm", "A realm where mushrooms have overgrown everything, a
 }, getVerdantMultDesc, 0.0005, 2));
 realms.push(
 // Clones cannot help each other at all.
-new Realm("Compounding Realm", "A realm where things get harder the more you do.  Each movement action completed (including walking - and pathfinding doesn't save you on that) increases the amount of time each subsequent task will take by 2.5%.  You'll get better at learning from repeated tasks (stat slowdown will start 0.1 points later per mana rock completion and you'll gain base 0.1% faster).", () => getRealm("Compounding Realm").machineCompletions + 2, () => {
+new Realm("Compounding Realm", "A realm where things get harder the more you do.  Each movement action completed (including walking - and pathfinding doesn't save you on that) increases the amount of time each subsequent task will take by 2.5% of the base amount.  You'll get better at learning from repeated tasks (stat slowdown will start 0.1 points later per mana rock completion and you'll gain base 0.1% faster).", () => getRealm("Compounding Realm").machineCompletions + 2, () => {
     getRealm("Compounding Realm").machineCompletions++;
     getMessage("Time Barriers").display();
 }, getCompoundingMultDesc, 0.1));
@@ -162,3 +162,11 @@ function getRealm(name) {
     return realm;
 }
 //# sourceMappingURL=realms.js.map
+
+//new Realm("Painful Realm", "A realm that seems to want you dead more than any other. Mana rocks are unstable, forges and lava here burn you, and all the shrooms are at least a little poisonous", () => (getRune("Pump").upgradeCount || 0) > 2 ? Infinity : (getRune("Wither").upgradeCount || 0) + 3, () => {
+//    if (getRune("Wither").upgradeCount++ >= 1) {
+//        getMessage("Reupgraded Pump Rune").display();
+//    }
+//    getRune("Wither").updateDescription();
+//    getMessage("Upgraded Pummp Rune").display();
+//}, getPainfulMultDesc, 0.0005, 2));
