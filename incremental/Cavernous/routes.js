@@ -74,7 +74,7 @@ class Route {
 		let cost = this.getConsumeCost(times);
 		while (baseTime > cost) {
 			baseTime -= cost;
-			cost = this.getConsumeCost(++times);
+			cost = this.getConsumeCost(times+5);
 		}
 		return times;
 	}
