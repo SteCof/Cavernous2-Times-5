@@ -549,7 +549,8 @@ function barrierDuration() {
     return 1;
 }
 function completeSacrifice(loc, clone) {
-    c.takeDamage(100000);
+    clone.takeDamage(1e38);
+    clone.takeDamage(1e38);
     getstuff("Blood Drop");
 }
 function completeGame() {
