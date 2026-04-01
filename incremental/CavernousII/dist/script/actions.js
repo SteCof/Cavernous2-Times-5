@@ -551,7 +551,7 @@ function barrierDuration() {
 function completeSacrifice(loc, clone) {
     clone.takeDamage(1e38);
     clone.takeDamage(1e38);
-    getstuff("Blood Drop");
+    getStuff("Blood Mark").update(+1);
 }
 function completeGame() {
     getMessage("You Win!").display();
