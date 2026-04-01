@@ -120,7 +120,7 @@ const stuff = [
     new Stuff("+1 Sword", ")", "A magical sword.  Sharp! (+4 attack)  Max 1 weapon per clone.", "#688868", 0, calcCombatStats),
     new Stuff("+1 Shield", "[", "A magical shield.  This should help you not die. (+4 defense)  Max 1 shield per clone.", "#688868", 0, calcCombatStats),
     new Stuff("+1 Armour", "]", "A suit of magical armour.  This should help you take more hits. (+25 health)  Max 1 armour per clone.", "#688868", 0, calcCombatStats),
-    new Stuff("Blood Drop", "🩸", "A symbol of your deal with the demons. Reduces by one each time you enter a new zone.", "#AA3333", 0),
+    new Stuff("Blood Mark", "🩸", "A symbol of your deal with the demons. Reduces by one each time you enter a new zone.", "#AA3333", 0),
 ];
 function setContrast(colour) {
     const darkness = (parseInt(colour.slice(1, 3), 16) * 299 + parseInt(colour.slice(3, 5), 16) * 587 + parseInt(colour.slice(5, 7), 16) * 114) / 1000;
