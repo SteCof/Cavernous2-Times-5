@@ -889,6 +889,10 @@ body.test-16px td.hover-location:before {
 	border-width: 2px;
 }
 
+td.altar {
+	content: "†";
+}
+
 td.wall {
 	/* background-color: #000000; */
 	background: repeating-linear-gradient(45deg, #000000, #000000 1px, #ffffff66 1px, #666666 2px);
