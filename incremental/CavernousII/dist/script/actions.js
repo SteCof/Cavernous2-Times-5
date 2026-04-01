@@ -284,6 +284,11 @@ function haveBridge() {
         return CanStartReturnCode.Now;
     return CanStartReturnCode.NotNow;
 }
+function haveBlood() {
+    if (getStuff("Blood Mark").count)
+        return CanStartReturnCode.Now;
+    return CanStartReturnCode.NotNow;
+}
 function completeGoldMana() {
     const manaMult = getRealmMult("Verdant Realm") || 1;
     getStat("Mana").current += GOLD_VALUE * manaMult;
@@ -542,6 +547,10 @@ function barrierDuration() {
         return 1 / (1 + loopCompletions / 40);
     }
     return 1;
+}
+function completeSacrifice(loc, clone) {
+    c.takeDamage(100000);
+    getstuff("Blood Drop");
 }
 function completeGame() {
     getMessage("You Win!").display();
