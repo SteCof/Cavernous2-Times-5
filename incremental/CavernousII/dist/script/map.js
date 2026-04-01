@@ -88,7 +88,7 @@ setTimeout(() => {
     });
 });
 // The tiles that can be pathfinded through.
-const walkable = '*.♥╬▣=⎶&║"()[]{}^WHTtFDdP¢¥£©Θ|<>';
+const walkable = '*.♥╬▣=⎶&║"()[]{}^WHTtFDdP¢¥£©Θ|<>†';
 // Water can flow through shrooms, albeit slower.
 const shrooms = "♠♣α§δ";
 const runesTiles = "WHTtDdF";
