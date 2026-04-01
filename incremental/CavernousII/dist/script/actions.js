@@ -605,6 +605,7 @@ var ACTION;
     ACTION["CREATE_HAMMER"] = "Create Hammer";
     ACTION["ENTER_BARRIER"] = "Enter Barrier";
     ACTION["EXIT"] = "Exit";
+    ACTION["SACRIFICE"] = "Sacrifice"
 })(ACTION || (ACTION = {}));
 const actions = [
     new Action("Walk", 100, [["Speed", 1]], completeMove),
