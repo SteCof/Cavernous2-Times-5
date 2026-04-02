@@ -377,7 +377,7 @@ setInterval(function mainLoop() {
     }
     if (!settings.running ||
         mana.current == 0 ||
-        (settings.autoRestart == AutoRestart.WaitAny && zones[currentZone].queues.some(q => !q.getNextAction() && (!q.length || q[q.length - 1].actionID != "="|| q[q.length - 1].actionID != "+"))) ||
+        (settings.autoRestart == AutoRestart.WaitAny && zones[currentZone].queues.some(q => !q.getNextAction() && (!q.length || q[q.length - 1].actionID != "=" && q[q.length - 1].actionID != "+"))) ||
         (settings.autoRestart == AutoRestart.WaitAll && zones[currentZone].queues.every(q => !q.getNextAction()) && clones.some(c => c.damage < Infinity)) ||
         !messageBox.hidden) {
         timeBanked += time;
