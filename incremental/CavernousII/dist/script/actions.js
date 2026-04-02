@@ -517,6 +517,8 @@ function predictWither(location) {
 function activatePortal() {
     breakActions = true;
     moveToZone(currentZone + 1);
+	if (getStuff("Blood Mark").count)
+	getStuff("Blood Mark").update(-1);
     if (settings.pauseOnPortal && settings.running)
         toggleRunning();
 }
