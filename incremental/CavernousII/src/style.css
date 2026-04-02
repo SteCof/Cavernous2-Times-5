@@ -893,6 +893,10 @@ td.altar {
 	content: "†";
 }
 
+td.demon_check {
+	content: "😈";
+}
+
 td.wall {
 	/* background-color: #000000; */
 	background: repeating-linear-gradient(45deg, #000000, #000000 1px, #ffffff66 1px, #666666 2px);
