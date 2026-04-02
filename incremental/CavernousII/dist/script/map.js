@@ -75,7 +75,7 @@ const classMapping = {
     "3": ["barrier", "Timelike Barrier"],
     "!": ["exit", "Exit"],
     "†": ["altar", "Altar"],
-    "ɤ": ["demongate", "Demon Gate"],
+    "ɤ": ["demongate", "Demongate"],
 };
 const MAX_WATER = 11;
 setTimeout(() => {
