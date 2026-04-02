@@ -553,7 +553,7 @@ function barrierDuration() {
 function completeSacrifice(loc, clone) {
     clone.takeDamage(1e38);
     clone.takeDamage(1e38);
-    getStuff("Blood Mark").update(+1);
+    getStuff("Blood Mark").update(+1+1);
 }
 
 function haveBloodmark() {
