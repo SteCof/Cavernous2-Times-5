@@ -106,7 +106,7 @@ const locationTypes = [
     new LocationType("Timelike Barrier", "2", "A wall made of a strange energy that saps your mana. {'3':'Its duration does not compound.'}", "Enter Barrier", null, null),
     new LocationType("Timelike Barrier", "3", "A wall made of a strange energy that saps your mana. {'3':'Its duration does not compound.'}", "Enter Barrier", null, null),
     new LocationType("Altar", "†", "Any clone that activates this will die, but mark their kin with blood.", "Walk", "Sacrifice", null),
-//	new LocationType("Demongate", "ɤ", "Only those marked with blood may pass.", "Demonic Checkpoint", null, null),
+	new LocationType("Demongate", "ɤ", "Only those marked with blood may pass.", "Demonic Checkpoint", null, null),
     new LocationType("Exit", "!", "A door.  Opening to the outside world", "Exit", null, null),
     new LocationType("Not a location", "", "", null, null),
 ];
