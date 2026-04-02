@@ -161,8 +161,8 @@ function getRealm(name) {
         throw new Error(`No realm with name "${name}" found`);
     return realm;
 }
-//# sourceMappingURL=realms.js.map
 
+//realms.push(
 //new Realm("Lethal Realm", "A realm that seems to want you dead more than any other. Mana rocks are unstable, forges and lava here burn you, and all the shrooms are at least a little poisonous", () => (getRune("Pump").upgradeCount || 0) > 2 ? Infinity : (getRune("Wither").upgradeCount || 0) + 3, () => {
 //    {
 //    getRealm("Lethal Realm").machineCompletions++;
