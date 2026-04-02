@@ -554,7 +554,7 @@ function completeSacrifice(loc, clone) {
     getStuff("Blood Mark").update(+1);
 }
 
-function haveBlookmark() {
+function haveBloodmark() {
     if (getStuff("Blood Mark").count)
         return CanStartReturnCode.Now;
     return CanStartReturnCode.NotNow;
