@@ -74,7 +74,8 @@ const classMapping = {
     "2": ["barrier", "Timelike Barrier"],
     "3": ["barrier", "Timelike Barrier"],
     "!": ["exit", "Exit"],
-    "†": ["altar", "Altar"]
+    "†": ["altar", "Altar"],
+    "ɤ": ["demongate", "Demon Gate"],
 };
 const MAX_WATER = 11;
 setTimeout(() => {
@@ -250,6 +251,7 @@ function setMined(x, y, icon) {
         "1": ".",
         "2": ".",
         "3": ".",
+        "ɤ": "."
     };
     x += zones[currentZone].xOffset;
     y += zones[currentZone].yOffset;
