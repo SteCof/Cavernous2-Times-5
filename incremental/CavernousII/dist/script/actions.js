@@ -553,6 +553,12 @@ function completeSacrifice(loc, clone) {
     clone.takeDamage(1e38);
     getStuff("Blood Mark").update(+1);
 }
+
+function haveBlookmark() {
+    if (getStuff("Blood Mark").count)
+        return CanStartReturnCode.Now;
+    return CanStartReturnCode.NotNow;
+}
 function completeGame() {
     getMessage("You Win!").display();
     // Reunlock VR
@@ -668,7 +674,8 @@ const actions = [
     new Action("Create Pick", 2500, [["Smithing", 1]], simpleCreate([["Iron Pick", 1]]), simpleRequire([["Iron Bar", 1]])),
     new Action("Create Hammer", 2500, [["Smithing", 1]], simpleCreate([["Iron Hammer", 1]]), simpleRequire([["Iron Bar", 1]])),
     new Action("Enter Barrier", 10000, [["Chronomancy", 1]], completeBarrier, startBarrier, null, barrierDuration),
-    new Action("Sacrifice", 100, [["Runic Lore", 1]], completeSacrifice),
+    new Action("Sacrifice", 1000, [["Runic Lore", 1]], completeSacrifice),
+    new Action("Demonic Checkpoint", 10000, [["Runic Lore", 1]], completeMine, haveBloodmark),
     new Action("Exit", 50000000, [["Mining", 0.25], ["Woodcutting", 0.25], ["Magic", 0.25], ["Speed", 0.25], ["Smithing", 0.25], ["Runic Lore", 0.25], ["Combat", 0.25], ["Gemcraft", 0.25], ["Chronomancy", 0.25]], completeGame),
 ];
 function getAction(name) {
