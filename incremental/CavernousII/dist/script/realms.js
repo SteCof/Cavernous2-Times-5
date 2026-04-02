@@ -163,10 +163,8 @@ function getRealm(name) {
 }
 //# sourceMappingURL=realms.js.map
 
-//new Realm("Painful Realm", "A realm that seems to want you dead more than any other. Mana rocks are unstable, forges and lava here burn you, and all the shrooms are at least a little poisonous", () => (getRune("Pump").upgradeCount || 0) > 2 ? Infinity : (getRune("Wither").upgradeCount || 0) + 3, () => {
-//    if (getRune("Wither").upgradeCount++ >= 1) {
-//        getMessage("Reupgraded Pump Rune").display();
-//    }
-//    getRune("Wither").updateDescription();
-//    getMessage("Upgraded Pummp Rune").display();
+//new Realm("Lethal Realm", "A realm that seems to want you dead more than any other. Mana rocks are unstable, forges and lava here burn you, and all the shrooms are at least a little poisonous", () => (getRune("Pump").upgradeCount || 0) > 2 ? Infinity : (getRune("Wither").upgradeCount || 0) + 3, () => {
+//    {
+//    getRealm("Lethal Realm").machineCompletions++;
+//    getMessage("Sacrifices and Blood").display();
 //}, getPainfulMultDesc, 0.0005, 2));
