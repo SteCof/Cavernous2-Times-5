@@ -890,13 +890,21 @@ body.test-16px td.hover-location:before {
 }
 
 td.altar {
+	background-color: #550000;
+	
+}
+
+td.altar:before {
 	content: "†";
 }
 
 td.demongate {
-	content: "😈";
+	background-color: #666000;
 }
 
+td.demongate:before {
+	content: "⛧";
+}
 td.wall {
 	/* background-color: #000000; */
 	background: repeating-linear-gradient(45deg, #000000, #000000 1px, #ffffff66 1px, #666666 2px);
