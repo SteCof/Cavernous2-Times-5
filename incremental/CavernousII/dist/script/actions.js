@@ -205,6 +205,9 @@ function completeCollectMana(loc) {
 }
 function tickCollectMana(usedTime, loc) {
     Route.updateBestRoute(loc);
+	    if (realms[currentRealm].name == "Hostile Realm") {
+        spreadDamage(baseTime / 1000, clone);
+    }
 }
 function longZoneCompletionMult(x, y, z) {
     if (x === undefined || y === undefined)
@@ -560,6 +563,12 @@ function haveBloodmark() {
     if (getStuff("Blood Mark").count)
         return CanStartReturnCode.Now;
     return CanStartReturnCode.NotNow;
+}
+function isPainful(usedTime, loc, baseTime, clone) {
+    spreadDamage(baseTime / 3000, clone);
+}
+function isVeryPainful(usedTime, loc, baseTime, clone) {
+    spreadDamage(baseTime / 1000, clone);
 }
 function completeGame() {
     getMessage("You Win!").display();
