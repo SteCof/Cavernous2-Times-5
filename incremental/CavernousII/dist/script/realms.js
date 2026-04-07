@@ -149,9 +149,17 @@ new Realm("Verdant Realm", "A realm where mushrooms have overgrown everything, a
     getRune("Wither").updateDescription();
     getMessage("Upgraded Wither Rune").display();
 }, getVerdantMultDesc, 0.0005, 2));
+
+
 realms.push(
-// Clones cannot help each other at all.
-new Realm("Compounding Realm", "A realm where things get harder the more you do.  Each movement action completed (including walking - and pathfinding doesn't save you on that) increases the amount of time each subsequent task will take by 2.5% of the base amount.  You'll get better at learning from repeated tasks (stat slowdown will start 0.1 points later per mana rock completion and you'll gain base 0.1% faster).", () => getRealm("Compounding Realm").machineCompletions + 2, () => {
+new Realm("Hostile Realm", "A realm that seems to want you dead more than any other. Mana rocks are unstable, forges and lava here burn you, and all the shrooms are at least a little poisonous", () => (getRune("Pump").upgradeCount || 0) > 2 ? Infinity : (getRune("Wither").upgradeCount || 0) + 3, () => {
+    {
+    getRealm("Hostile Realm").machineCompletions++;
+    getMessage("Sacrifices and Blood").display();
+}, getPainfulMultDesc, 0.0005, 2));
+
+realms.push(    
+    new Realm("Compounding Realm", "A realm where things get harder the more you do.  Each movement action completed (including walking - and pathfinding doesn't save you on that) increases the amount of time each subsequent task will take by 2.5% of the base amount.  You'll get better at learning from repeated tasks (stat slowdown will start 0.1 points later per mana rock completion and you'll gain base 0.1% faster).", () => getRealm("Compounding Realm").machineCompletions + 2, () => {
     getRealm("Compounding Realm").machineCompletions++;
     getMessage("Time Barriers").display();
 }, getCompoundingMultDesc, 0.1));
@@ -162,9 +170,3 @@ function getRealm(name) {
     return realm;
 }
 
-//realms.push(
-//new Realm("Lethal Realm", "A realm that seems to want you dead more than any other. Mana rocks are unstable, forges and lava here burn you, and all the shrooms are at least a little poisonous", () => (getRune("Pump").upgradeCount || 0) > 2 ? Infinity : (getRune("Wither").upgradeCount || 0) + 3, () => {
-//    {
-//    getRealm("Lethal Realm").machineCompletions++;
-//    getMessage("Sacrifices and Blood").display();
-//}, getPainfulMultDesc, 0.0005, 2));
