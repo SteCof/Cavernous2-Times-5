@@ -130,6 +130,10 @@ function convertMapToVerdant(map, zoneNumber) {
     const notReUnlocked = getRealm("Verdant Realm").maxMult === 2;
     return map.map(row => [...row].map(cell => zoneNumber > 6 && notReUnlocked ? "█" : (zoneNumber == 6 && cell == "Θ" && notReUnlocked ? "♠" : verdantMapping[cell] || cell)).join(""));
 }
+const hostileMapping = {
+    " ": "~",
+    "^": "0",
+};
 const realms = [];
 realms.push(
 // Default realm, no special effects.
