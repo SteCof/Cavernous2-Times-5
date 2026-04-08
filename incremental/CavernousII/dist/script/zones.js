@@ -105,6 +105,10 @@ class Zone {
         if (realms[currentRealm].name == "Verdant Realm" && this.index == 0 && realm.mult !== null) {
             realm.mult += 0.0005;
         }
+         realm = getRealm("Hostile Realm");
+        if (realms[currentRealm].name == "Hostile Realm" && this.index == 0 && realm.mult !== null) {
+            realm.mult += 0.05;
+         }   
         realm = getRealm("Compounding Realm");
         if (realms[currentRealm].name == "Compounding Realm" && this.index == 0 && realm.mult !== null) {
             realm.mult += 0.05;
