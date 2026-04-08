@@ -205,6 +205,10 @@ const messages = [
     new Message("Time Barriers", `
 			You've unlocked the first of the time barriers!
 			There's one in each zone, behind which is a mana rock.  However, breaching a time barrier causes the zone to leech 5 of your mana per second.`),
+	new Message("Sacrifices and Blood", `
+			Something in this Hostile Realm is willing to offer you a deal - sacrifice one of your own, and you can access new pathways, some of which even lead to new areas; one in each zone.
+			Sacrifice a clone by activating an Altar with them, and you will gain a blood mark - allowing you to use all the demongates in that zone. When you enter a new zone, that mark will fade.
+			When using the *Wait for Any* setting, setting dead clones to no-sync will allow the system to ignore them.`),
     new Message("Complete Verdant", `
 			You've learned all that you can in the Verdant Realm.  You no longer have access to it - but wither runes no longer cost any gold.`),
     new Message("You Win!", `
