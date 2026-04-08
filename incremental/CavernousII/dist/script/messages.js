@@ -189,6 +189,10 @@ const messages = [
 			In the Compounding Realm, you feel like you're moving through molasses.
 			Each time you move, subsequent actions will take 2.5% longer.
 			However, mining mana there will increase your ability to learn past 100.`),
+	new Message("Hostile Realm", `
+			Sometimes it feels like this cave system is trying to kill you; but it could definitely be trying harder.
+			In the Hostile Realm, it is. Hot things will burn you, mana stones are unstable and damaging, all mushrooms have spores, and worst of all healing fountains are now springs.
+			Mining mana there will increase your ability to survive damage.`),
     new Message("Upgraded Duplication Rune", `
 			You've upgraded the Duplication rune!
 			Duplication now gives 25% more resources (you can't do anything with less than a full item, though, unless you have enough quarter items).  Further upgrades will increase this by 25% (additively).`),
