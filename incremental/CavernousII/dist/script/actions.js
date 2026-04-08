@@ -533,7 +533,10 @@ function getChopTime(base, increaseRate) {
     return () => base + increaseRate * queueTime * (realms[currentRealm].name == "Verdant Realm" ? VERDANT_GROW_MULT : 1);
 }
 function tickSpore(usedTime, loc, baseTime, clone) {
-    spreadDamage(baseTime / 1000, clone);
+	if (realms[currentRealm].name == "Hostile Realm") {
+        spreadDamage(baseTime / 500, clone);
+    }
+	else {spreadDamage(baseTime / 1000, clone);}
 }
 function completeBarrier(loc) {
     zones[currentZone].manaDrain += BARRIER_DRAIN;
@@ -565,10 +568,14 @@ function haveBloodmark() {
     return CanStartReturnCode.NotNow;
 }
 function isPainful(usedTime, loc, baseTime, clone) {
-    spreadDamage(baseTime / 3000, clone);
+    if (realms[currentRealm].name == "Hostile Realm") {
+        spreadDamage(baseTime / 3000, clone);
+    }
 }
 function isVeryPainful(usedTime, loc, baseTime, clone) {
-    spreadDamage(baseTime / 1000, clone);
+    if (realms[currentRealm].name == "Hostile Realm") {
+        spreadDamage(baseTime / 1000, clone);
+    }
 }
 function completeGame() {
     getMessage("You Win!").display();
@@ -652,8 +659,8 @@ const actions = [
     new Action("Collect Gem", 100000, [["Smithing", 0.1], ["Gemcraft", 1]], completeCollectGem, null, null, mineGemCost),
     new Action("Collect Mana", 1000, [["Magic", 1]], completeCollectMana, canMineMana, tickCollectMana, mineManaRockCost),
     new Action("Activate Machine", 1000, [], completeActivateMachine, startActivateMachine),
-    new Action("Make Iron Bars", 5000, [["Smithing", 1]], simpleCreate([["Iron Bar", 1]]), simpleRequire([["Iron Ore", 1]], true)),
-    new Action("Make Steel Bars", 15000, [["Smithing", 1]], simpleCreate([["Steel Bar", 1]]), simpleRequire([["Iron Bar", 1], ["Coal", 1]], true)),
+    new Action("Make Iron Bars", 5000, [["Smithing", 1]], simpleCreate([["Iron Bar", 1]]), simpleRequire([["Iron Ore", 1]], true, null, isPainful)),
+    new Action("Make Steel Bars", 15000, [["Smithing", 1]], simpleCreate([["Steel Bar", 1]]), simpleRequire([["Iron Bar", 1], ["Coal", 1]], true, null, isVeryPainful)),
     new Action("Turn Gold to Mana", 1000, [["Magic", 1]], completeGoldMana, simpleRequire([["Gold Nugget", 1]], true)),
     new Action("Cross Pit", 3000, [["Smithing", 1], ["Speed", 0.3]], completeCrossPit, haveBridge),
     new Action("Cross Lava", 6000, [["Smithing", 1], ["Speed", 0.3]], completeCrossLava, haveBridge),
@@ -678,10 +685,10 @@ const actions = [
     new Action("Heal", 1000, [["Runic Lore", 1]], completeHeal, startHeal, tickHeal, predictHeal),
     new Action("Portal", 1, [["Magic", 0.5], ["Runic Lore", 0.5]], activatePortal),
     new Action("Complete Goal", 1000, [["Speed", 1]], completeGoal),
-    new Action("Chop", getChopTime(1000, 0.1), [["Woodcutting", 1], ["Speed", 0.2]], completeMine),
-    new Action("Kudzu Chop", getChopTime(1000, 0.1), [["Woodcutting", 1], ["Speed", 0.2]], completeMove),
+    new Action("Chop", getChopTime(1000, 0.1), [["Woodcutting", 1], ["Speed", 0.2]], completeMine, null, isPainful),
+    new Action("Kudzu Chop", getChopTime(1000, 0.1), [["Woodcutting", 1], ["Speed", 0.2]], completeMove, null, isPainful),
     new Action("Spore Chop", getChopTime(1000, 0.1), [["Woodcutting", 1], ["Speed", 0.2]], completeMine, null, tickSpore),
-    new Action("Oyster Chop", getChopTime(1000, 0.2), [["Woodcutting", 1], ["Speed", 0.2]], completeMine),
+    new Action("Oyster Chop", getChopTime(1000, 0.2), [["Woodcutting", 1], ["Speed", 0.2]], completeMine, null, isPainful),
     new Action("Create Axe", 2500, [["Smithing", 1]], simpleCreate([["Iron Axe", 1]]), simpleRequire([["Iron Bar", 1]])),
     new Action("Create Pick", 2500, [["Smithing", 1]], simpleCreate([["Iron Pick", 1]]), simpleRequire([["Iron Bar", 1]])),
     new Action("Create Hammer", 2500, [["Smithing", 1]], simpleCreate([["Iron Hammer", 1]]), simpleRequire([["Iron Bar", 1]])),
