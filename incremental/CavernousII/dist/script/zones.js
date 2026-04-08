@@ -200,7 +200,7 @@ class Zone {
             if (settings.running)
                 toggleRunning();
         }
-        if (this.name == "Zone 7" && getMessage("Game Slowdown").display()) {
+        if (this.name == "Zone 7" && getMessage("Entering the Expansion").display()) {
             if (settings.running)
                 toggleRunning();
         }
