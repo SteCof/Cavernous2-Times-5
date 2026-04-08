@@ -203,10 +203,10 @@ function completeCollectMana(loc) {
         shouldReset = true;
     getRealmComplete(realms[currentRealm]);
 }
-function tickCollectMana(usedTime, loc) {
+function tickCollectMana(usedTime, loc, baseTime, clone) {
     Route.updateBestRoute(loc);
 	    if (realms[currentRealm].name == "Hostile Realm") {
-        spreadDamage(baseTime / 1000, clone);
+        spreadDamage(baseTime/ 5000, clone);
     }
 }
 function longZoneCompletionMult(x, y, z) {
