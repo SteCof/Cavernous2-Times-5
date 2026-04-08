@@ -48,11 +48,13 @@ class Clone {
         this.resetTimeLine();
     }
     takeDamage(amount) {
-        if (getStat("Health").current - this.damage > 0.1) {
-            this.damage = Math.min(getStat("Health").current - 0.05, this.damage + amount);
+        const damageMult=getRealmMult("Hostile Realm");
+	let modifiedDamage = amount/(damageMult);
+	if (getStat("Health").current - this.damage > 0.1) {
+            this.damage = Math.min(getStat("Health").current - 0.05, this.damage + modifiedDamage);
         }
         else {
-            this.damage += amount;
+            this.damage += modifiedDamage;
         }
         this.minHealth = Math.min(this.minHealth, this.startDamage - this.damage);
         if (this.damage < 0)
