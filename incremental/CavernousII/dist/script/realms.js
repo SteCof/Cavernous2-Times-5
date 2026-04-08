@@ -80,7 +80,7 @@ function changeRealms(newRealm) {
     if (currentActiveRealm)
         currentActiveRealm.classList.remove("active-realm");
     realms[newRealm].node?.classList.add("active-realm");
-    document.querySelector("#queue-actions").style.display = currentRealm == 4 ? "block" : "none";
+    document.querySelector("#queue-actions").style.display = currentRealm == 3 ? "block" : "none";
     resetLoop();
 }
 function getRealmMult(name, force = false) {
@@ -155,7 +155,7 @@ new Realm("Verdant Realm", "A realm where mushrooms have overgrown everything, a
 
 
 realms.push(
-new Realm("Hostile Realm", "A realm that seems to want you dead more than any other. Mana rocks are unstable, forges and lava here burn you, and all the shrooms are at least a little poisonous.", () => getRealm("Hostile Realm").machineCompletions + 2,
+new Realm("Hostile Realm", "A realm that seems to want you dead more than any other. Mana rocks are unstable, forges and lava here burn you, and all the shrooms are at least a little poisonous.", () => getRealm("Hostile Realm").machineCompletions + 3,
     () => {
     getRealm("Hostile Realm").machineCompletions++;
     getMessage("Blood and Sacrifice").display();
