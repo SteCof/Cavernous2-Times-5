@@ -80,7 +80,7 @@ function changeRealms(newRealm) {
     if (currentActiveRealm)
         currentActiveRealm.classList.remove("active-realm");
     realms[newRealm].node?.classList.add("active-realm");
-    document.querySelector("#queue-actions").style.display = currentRealm == 3 ? "block" : "none";
+    document.querySelector("#queue-actions").style.display = currentRealm == 4 ? "block" : "none";
     resetLoop();
 }
 function getRealmMult(name, force = false) {
