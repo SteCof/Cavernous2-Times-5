@@ -155,10 +155,10 @@ new Realm("Verdant Realm", "A realm where mushrooms have overgrown everything, a
 
 
 realms.push(
-new Realm("Hostile Realm", "A realm that seems to want you dead more than any other. Mana rocks are unstable, forges and lava here burn you, and all the shrooms are at least a little poisonous", () => (getRune("Pump").upgradeCount || 0) > 2 ? Infinity : (getRune("Wither").upgradeCount || 0) + 3, () => {
-    {
+new Realm("Hostile Realm", "A realm that seems to want you dead more than any other. Mana rocks are unstable, forges and lava here burn you, and all the shrooms are at least a little poisonous.", () => getRealm("Hostile Realm").machineCompletions + 2,
+    () => {
     getRealm("Hostile Realm").machineCompletions++;
-    getMessage("Sacrifices and Blood").display();
+    getMessage("Blood and Sacrifice").display();
 }, getHostileMultDesc, 0.0005, 2));
 
 realms.push(    
@@ -172,4 +172,3 @@ function getRealm(name) {
         throw new Error(`No realm with name "${name}" found`);
     return realm;
 }
-
