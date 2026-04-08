@@ -100,6 +100,9 @@ function getRealmMult(name, force = false) {
 function getVerdantMultDesc() {
     return `Total multiplier: x${writeNumber(getRealmMult("Verdant Realm", true), 4)}`;
 }
+function getHostileMultDesc() {
+    return `Total boost: x${writeNumber(getRealmMult("Hostile Realm", true), 4)}`;
+}
 function getCompoundingMultDesc() {
     return `Stat slowdown start: ${writeNumber(99 + getRealmMult("Compounding Realm", true), 4)}`;
 }
@@ -156,7 +159,7 @@ new Realm("Hostile Realm", "A realm that seems to want you dead more than any ot
     {
     getRealm("Hostile Realm").machineCompletions++;
     getMessage("Sacrifices and Blood").display();
-}, getPainfulMultDesc, 0.0005, 2));
+}, getHostileMultDesc, 0.0005, 2));
 
 realms.push(    
     new Realm("Compounding Realm", "A realm where things get harder the more you do.  Each movement action completed (including walking - and pathfinding doesn't save you on that) increases the amount of time each subsequent task will take by 2.5% of the base amount.  You'll get better at learning from repeated tasks (stat slowdown will start 0.1 points later per mana rock completion and you'll gain base 0.1% faster).", () => getRealm("Compounding Realm").machineCompletions + 2, () => {
