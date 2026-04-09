@@ -371,6 +371,14 @@ function showRelevantStats(loc) {
             }
         }
     }
+    if (realms[currentRealm].name == "Hostile Realm") {
+        if (hostileMapping[loc.baseType.symbol]) {
+            let locType = getLocationTypeBySymbol(hostileMapping[loc.baseType.symbol]);
+            if (locType) {
+                action = getLocationType(locType)?.getEnterAction(loc.entered);
+            }
+        }
+    }
     if (!action) {
         let enterAction = loc.baseType.getEnterAction(loc.entered);
         action = enterAction?.name == "Walk" ? loc.baseType.presentAction || loc.temporaryPresent || enterAction : enterAction;
