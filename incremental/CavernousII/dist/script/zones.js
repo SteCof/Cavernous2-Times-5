@@ -76,6 +76,10 @@ class Zone {
             // Visual changes
             this.map = convertMapToVerdant(this.map, this.index);
         }
+        if (realms[currentRealm].name == "Hostile Realm") {
+            // Visual changes
+            this.map = convertMapToHostile(this.map, this.index);
+        }
         if (this.goalComplete)
             this.map = this.map.map(row => row.replace("√", "#"));
         let unlockedBarriers = getRealm("Compounding Realm").machineCompletions;
