@@ -59,7 +59,7 @@ const locationTypes = [
     new LocationType("Vaporizer", "=", "A machine for extracting the magic right out of gold. ({MANA_PER_GOLD} mana per gold)", "Walk", "Turn Gold to Mana", null),
     new LocationType("Fountain", "^", "A healing fountain, activated by the runes around its base.", "Walk", "Heal", null, null, undefined, false),
     new LocationType("Bottomless Pit", " ", "A bottomless pit.", "Cross Pit", null, null),
-    new LocationType("Lava", "~", "A bottomless pit full of lava.  At least, you're not going to be walking on the bottom, so it's bottomless enough for you.  Your bridges might not last very long here,{'0':'but probably long enough for one clone.','3':'and nor will your clones - deals 1 damage per second while crossing.'}  ", "Cross Lava", null, null, null, Infinity),
+    new LocationType("Lava", "~", "A bottomless pit full of lava.  At least, you're not going to be walking on the bottom, so it's bottomless enough for you.  Your bridges might not last very long here,{'0':'but probably long enough for one clone.','3':'and the poor clone that crosses that melting bridge will take 3 damage'}  ", "Cross Lava", null, null, null, Infinity),
     new LocationType("Goblin", "g", "An ugly humanoid more likely to try and kill you than to let you by.\n{STATS}", "Attack Creature", null, null),
     new LocationType("Goblin Chieftain", "c", "This one is uglier than the last two.  Probably meaner, too.\n{STATS}", "Attack Creature", null, null),
     new LocationType("Goblin Champion", "m", "The largest of the goblins.  You're going to have to work hard to take him down.\n{STATS}", "Attack Creature", null, null),
