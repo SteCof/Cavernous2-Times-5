@@ -317,6 +317,9 @@ function completeCrossLava(loc, clone, action) {
             return true;
         bridge.update(-1);
         completeMove(loc, clone, action);
+        if (realms[currentRealm].name == "Hostile Realm"){
+        clone.takeDamage(3);}
+
         getMessage("Lava Can't Melt Steel Bridges").display();
         return;
     }
@@ -674,7 +677,7 @@ const actions = [
     new Action("Make Steel Bars", 15000, [["Smithing", 1]], simpleCreate([["Steel Bar", 1]]), simpleRequire([["Iron Bar", 1], ["Coal", 1]], true, null), isVeryPainful),
     new Action("Turn Gold to Mana", 1000, [["Magic", 1]], completeGoldMana, simpleRequire([["Gold Nugget", 1]], true)),
     new Action("Cross Pit", 3000, [["Smithing", 1], ["Speed", 0.3]], completeCrossPit, haveBridge),
-    new Action("Cross Lava", 6000, [["Smithing", 1], ["Speed", 0.3]], completeCrossLava, haveBridge, isVeryPainful),
+    new Action("Cross Lava", 6000, [["Smithing", 1], ["Speed", 0.3]], completeCrossLava, haveBridge),
     new Action("Create Bridge", 5000, [["Smithing", 1]], simpleCreate([["Iron Bridge", 1]]), simpleRequire([["Iron Bar", 2]])),
     new Action("Create Long Bridge", 50000, [["Smithing", 1]], simpleCreate([["Iron Bridge", 1]]), simpleRequire([["Iron Bar", 2]])),
     new Action("Upgrade Bridge", 12500, [["Smithing", 1]], simpleCreate([["Steel Bridge", 1]]), simpleRequire([["Steel Bar", 1], ["Iron Bridge", 1]])),
