@@ -32,6 +32,12 @@ class MapLocation {
                 return getLocationType(getLocationTypeBySymbol(symbol) || '') || this.baseType;
             }
         }
+	if (currentRealm === 3) {
+            const symbol = hostileMapping[this.baseType.symbol];
+            if (symbol) {
+                return getLocationType(getLocationTypeBySymbol(symbol) || '') || this.baseType;
+            }
+        }
         return this.baseType;
     }
     getEnterAction() {
