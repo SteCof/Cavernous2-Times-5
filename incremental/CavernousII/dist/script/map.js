@@ -371,14 +371,21 @@ function showRelevantStats(loc) {
             }
         }
     }
-    if (realms[currentRealm].name == "Hostile Realm") {
+ if (realms[currentRealm].name == "Hostile Realm") {
         if (hostileMapping[loc.baseType.symbol]) {
             let locType = getLocationTypeBySymbol(hostileMapping[loc.baseType.symbol]);
             if (locType) {
                 action = getLocationType(locType)?.getEnterAction(loc.entered);
             }
         }
+	if (getRealm("Hostile Realm").machineCompletions < 1){
+		let locType = getLocationTypeBySymbol(hostileMapping[loc.baseType.symbol]);		
+	if (locType) {
+                return getLocationType(getLocationTypeBySymbol(symbol) || '') || this.baseType;
+            }
+	}
     }
+   
     if (!action) {
         let enterAction = loc.baseType.getEnterAction(loc.entered);
         action = enterAction?.name == "Walk" ? loc.baseType.presentAction || loc.temporaryPresent || enterAction : enterAction;
