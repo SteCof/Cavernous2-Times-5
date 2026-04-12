@@ -134,6 +134,10 @@ const hostileMapping = {
     " ": "~",
     "^": "0",
 };
+const noBloodMapping = {
+    "†": "█",
+    "ɤ": "█",
+ };
 function convertMapToHostile(map, zoneNumber) {
     const notReUnlocked = getRealm("Hostile Realm").maxMult === 2;
     return map.map(row => [...row].map(cell => ( hostileMapping[cell] || cell)).join(""));
