@@ -25,6 +25,7 @@ class MapLocation {
     get priorCompletions() {
         return (this.priorCompletionData[currentRealm]);
     }
+
     get type() {
         if (currentRealm === 2) {
             const symbol = verdantMapping[this.baseType.symbol];
@@ -38,6 +39,12 @@ class MapLocation {
                 return getLocationType(getLocationTypeBySymbol(symbol) || '') || this.baseType;
             }
         }
+	if (getRealm("Hostile Realm").machineCompletions < 1){
+		const symbol = noBloodMapping[this.baseType.symbol];
+if (symbol) {
+                return getLocationType(getLocationTypeBySymbol(symbol) || '') || this.baseType;
+            }
+	}
         return this.baseType;
     }
     getEnterAction() {
