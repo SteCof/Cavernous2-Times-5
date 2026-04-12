@@ -562,7 +562,7 @@ function barrierDuration() {
 function completeSacrifice(loc, clone) {
     clone.takeDamage(1e38);
     clone.takeDamage(1e38);
-    getStuff("Blood Mark").update(+1+1);
+    getStuff("Blood Mark").update(+getRealm("Hostile Realm").machineCompletions);
 }
 
 function haveBloodmark() {
@@ -575,16 +575,7 @@ function isPainful(usedTime, loc, baseTime, clone) {
         spreadDamage(baseTime / 3000, clone);
     }
 }
-function isPainfulNotSpread(usedTime, loc, baseTime, clone) {
-    if (realms[currentRealm].name == "Hostile Realm") {
-        clone.takedamage(baseTime / 3000, clone);
-    }
-}
-function isVeryPainfulNotSpread(usedTime, loc, baseTime, clone) {
-    if (realms[currentRealm].name == "Hostile Realm") {
-        clone.takedamage(baseTime / 1000, clone);
-    }
-}
+
 function isVeryPainful(usedTime, loc, baseTime, clone) {
     if (realms[currentRealm].name == "Hostile Realm") {
         spreadDamage(baseTime / 1000, clone);
