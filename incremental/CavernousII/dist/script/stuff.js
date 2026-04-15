@@ -39,6 +39,7 @@ class Stuff {
                 "Iron Axe": "Woodcutting",
                 "Iron Pick": "Mining",
                 "Iron Hammer": "Smithing",
+		"Runic Tome": "Runic Lore",
                 // @ts-ignore
             }[this.name]);
             const combatValue = Math.pow(stat.value, 0.01 * this.count);
@@ -120,6 +121,7 @@ const stuff = [
     new Stuff("+1 Sword", ")", "A magical sword.  Sharp! (+4 attack)  Max 1 weapon per clone.", "#688868", 0, calcCombatStats),
     new Stuff("+1 Shield", "[", "A magical shield.  This should help you not die. (+4 defense)  Max 1 shield per clone.", "#688868", 0, calcCombatStats),
     new Stuff("+1 Armour", "]", "A suit of magical armour.  This should help you take more hits. (+25 health)  Max 1 armour per clone.", "#688868", 0, calcCombatStats),
+    new Stuff("Runic Tome", "ᛝ", "A book of magical rituals. Gives +40 or +40% to Runic Lore (whichever is greater), and applies 2% of your Runic Lore skill to combat ({}*2%), but drains 0.1 mana per second.", "#688868", 0, getStatBonus("Runic Lore", 40)), //probably need to test whether the *2 is displaying properly, can sort out better later if not.
     new Stuff("Blood Mark", "🩸", "A symbol of your deal with the demons. Reduces by one each time you enter a new zone.", "#AA3333", 0),
 ];
 function setContrast(colour) {
