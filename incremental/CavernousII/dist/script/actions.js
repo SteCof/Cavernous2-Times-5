@@ -562,7 +562,9 @@ function barrierDuration() {
 function completeSacrifice(loc, clone) {
     clone.takeDamage(1e38);
     clone.takeDamage(1e38);
-    getStuff("Blood Mark").update(+getRealm("Hostile Realm").machineCompletions);
+	if(realms[currentRealm].name == "Long Realm" && loc.completions%2 == 0) {	
+    }
+	else {getStuff("Blood Mark").update(+getRealm("Hostile Realm").machineCompletions);}
 }
 
 function haveBloodmark() {
@@ -646,6 +648,7 @@ var ACTION;
     ACTION["EXIT"] = "Exit";
     ACTION["SACRIFICE"] = "Sacrifice";
     ACTION["DEMON_CHECK"] = "Demonic Checkpoint";
+    ACTION["CREATE_TOME"] = "Create Tome"
 })(ACTION || (ACTION = {}));
 const actions = [
     new Action("Walk", 100, [["Speed", 1]], completeMove),
@@ -664,7 +667,7 @@ const actions = [
     new Action("Collect Gem", 100000, [["Smithing", 0.1], ["Gemcraft", 1]], completeCollectGem, null, null, mineGemCost),
     new Action("Collect Mana", 1000, [["Magic", 1]], completeCollectMana, canMineMana, tickCollectMana, mineManaRockCost),
     new Action("Activate Machine", 1000, [], completeActivateMachine, startActivateMachine),
-    new Action("Make Iron Bars", 5000, [["Smithing", 1]], simpleCreate([["Iron Bar", 1]]), simpleRequire([["Iron Ore", 1]], true, null), isVeryPainful),
+    new Action("Make Iron Bars", 5000, [["Smithing", 1]], simpleCreate([["Iron Bar", 1]]), simpleRequire([["Iron Ore", 1]], true, null), isPainful),
     new Action("Make Steel Bars", 15000, [["Smithing", 1]], simpleCreate([["Steel Bar", 1]]), simpleRequire([["Iron Bar", 1], ["Coal", 1]], true, null), isVeryPainful),
     new Action("Turn Gold to Mana", 1000, [["Magic", 1]], completeGoldMana, simpleRequire([["Gold Nugget", 1]], true)),
     new Action("Cross Pit", 3000, [["Smithing", 1], ["Speed", 0.3]], completeCrossPit, haveBridge),
@@ -698,6 +701,7 @@ const actions = [
     new Action("Create Pick", 2500, [["Smithing", 1]], simpleCreate([["Iron Pick", 1]]), simpleRequire([["Iron Bar", 1]])),
     new Action("Create Hammer", 2500, [["Smithing", 1]], simpleCreate([["Iron Hammer", 1]]), simpleRequire([["Iron Bar", 1]])),
     new Action("Enter Barrier", 10000, [["Chronomancy", 1]], completeBarrier, startBarrier, null, barrierDuration),
+    new Action("Create Tome", 1000000, [["Smithing", 0.5]], [["Gemcraft", 0.5]], simpleCreate([["Runic Tome", 1]]), simpleRequire([["Gem", 2], ["Gold", 1]])),
     new Action("Sacrifice", 1000, [["Runic Lore", 1]], completeSacrifice),
     new Action("Demonic Checkpoint", 1000, [["Runic Lore", 1]], completeMine, haveBloodmark),
     new Action("Exit", 50000000, [["Mining", 0.25], ["Woodcutting", 0.25], ["Magic", 0.25], ["Speed", 0.25], ["Smithing", 0.25], ["Runic Lore", 0.25], ["Combat", 0.25], ["Gemcraft", 0.25], ["Chronomancy", 0.25]], completeGame),
