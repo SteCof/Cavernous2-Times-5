@@ -76,6 +76,7 @@ const classMapping = {
     "!": ["exit", "Exit"],
     "†": ["altar", "Altar"],
     "ɤ": ["demongate", "Demongate"],
+    "¶": ["basaltplume", "Basalt Plume"],
 };
 const MAX_WATER = 11;
 setTimeout(() => {
@@ -247,6 +248,7 @@ function setMined(x, y, icon) {
         "░": ".",
         "╖": ".",
         "╣": ".",
+	"¶": "~",
         "■": ".",
         "1": ".",
         "2": ".",
