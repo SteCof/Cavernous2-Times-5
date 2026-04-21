@@ -207,7 +207,7 @@ function completeCollectMana(loc) {
 function tickCollectMana(usedTime, loc, baseTime, clone) {
     Route.updateBestRoute(loc);
 	    if (realms[currentRealm].name == "Hostile Realm") {
-        spreadDamage(baseTime/ 5000, clone);
+        spreadDamage(baseTime/ 4000, clone);
     }
 }
 function longZoneCompletionMult(x, y, z) {
@@ -350,7 +350,8 @@ function spreadDamage(damage, clone) {
 let combatTools = [
     [getStuff("Iron Axe"), 0.01, getStat("Woodcutting")],
     [getStuff("Iron Pick"), 0.01, getStat("Mining")],
-    [getStuff("Iron Hammer"), 0.01, getStat("Smithing")]
+    [getStuff("Iron Hammer"), 0.01, getStat("Smithing")],
+    [getStuff("Runic Tome"), 0.02, getStat("Runic Lore")],
 ];
 function combatDuration() {
     let duration = 1;
@@ -675,6 +676,7 @@ const actions = [
     new Action("Mine Travertine", 10000, [["Mining", 1], ["Speed", 0.2]], completeMine),
     new Action("Mine Granite", 350000, [["Mining", 1], ["Speed", 0.2]], completeMine),
     new Action("Mine Basalt", 4000000, [["Mining", 1], ["Speed", 0.2]], completeMine),
+    new Action("Mine Basalt Plume", getChopTime(3000000, 1), [["Mining", 1], ["Speed", 0.2]], completeMine, null, isPainful),
     new Action("Mine Chert", 50000000, [["Mining", 1], ["Speed", 0.2]], completeMine),
     new Action("Mine Gold", 1000, [["Mining", 1], ["Speed", 0.2]], completeGoldMine),
     new Action("Mine Iron", 2500, [["Mining", 2]], completeIronMine),
