@@ -49,14 +49,14 @@ function resetLoop(noLoad = false, saveGame = true) {
     else
         getMessage("Persisted Programming").display();
     if (mana.base == 5.5)
-        getMessage("The Looping of Looping Loops").display() && setSetting(toggleAutoRestart, 1);
+        getMessage("The Looping of Looping Loops").display() && setSetting(toggleAutoRestart, 0);
     if (mana.base == 6)
         getMessage("Strip Mining").display();
-    if (mana.base == 7.4)
+    if (mana.base >= 7.4)
         getMessage("Buy More Time").display();
     if (routes.length == 3)
         getMessage("All the known ways").display() && setSetting(toggleGrindMana, true);
-    if (queueTime > 50000)
+    if (queueTime > 150000)
         getMessage("Looper's Log: Supplemental").display();
     if (mana.current > 0) {
         currentLoopLog.finalize();
@@ -78,6 +78,10 @@ function resetLoop(noLoad = false, saveGame = true) {
         s.count = 0;
         s.update();
     });
+    if (settings.autoErase==0) {
+        zones[displayZone].queues.forEach(q => q ? q.clear() : null);
+    }
+	
     clones.forEach(c => c.reset());
     queueTime = 0;
     totalDrain = 0;
@@ -86,6 +90,7 @@ function resetLoop(noLoad = false, saveGame = true) {
         c.attack = c.creature.attack;
         c.defense = c.creature.defense;
         c.health = c.creature.health;
+	c.damageAtStartOfSalt=0;
         c.drawHealth();
     });
     zones.forEach(z => {
@@ -503,9 +508,9 @@ function setup() {
     getMapLocation(0, 0);
     drawMap();
     getMessage("Welcome to Cavernous!").display();
-    if (URLParams.has("timeless")) {
+ //   if (URLParams.has("timeless")) {
         timeBanked = Infinity;
-    }
+  //  }
 }
 function applyCustomStyling() {
     if (settings.debug_verticalBlocksJustify) {
