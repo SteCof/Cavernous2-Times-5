@@ -4,6 +4,7 @@ const settings = {
     usingBankedTime: true,
     running: true,
     autoRestart: 0,
+    autoErase: 0,
     useWASD: false,
     useDifferentBridges: true,
     grindMana: false,
@@ -54,6 +55,22 @@ function toggleAutoRestart() {
         .closest(".option")
         .classList.toggle("option-highlighted", settings.autoRestart === 0);
     return settings.autoRestart;
+}
+var AutoErase;
+(function (AutoErase) {
+    AutoErase[AutoErase["EraseZone"] = 0] = "EraseZone";
+    AutoErase[AutoErase["KeepQueue"] = 1] = "KeepQueue";
+
+})(AutoErase || (AutoErase = {}));
+function toggleAutoErase() {
+    const autoEraseText = ["Erase current queues","Keep your queue"];
+    settings.autoErase = (settings.autoErase + 1) % autoEraseText.length;
+    document.querySelector("#auto-erase-toggle").innerHTML = autoEraseText[settings.autoErase];
+    document
+        .querySelector("#auto-erase-toggle")
+        .closest(".option")
+        .classList.toggle("option-highlighted", settings.autoErase === 0);
+    return settings.autoErase;
 }
 function toggleUseWASD() {
     settings.useWASD = !settings.useWASD;
@@ -257,6 +274,10 @@ const adjustableKeybindings = {
         else {
             toggleAutoRestart();
         }
+    },
+    "KeyK": () => {
+            toggleAutoErase();
+       
     },
     "KeyA": () => {
         if (settings.useWASD) {
