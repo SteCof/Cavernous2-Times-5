@@ -186,22 +186,22 @@ function completeSaltMine(loc, clone) {
 function completeCollectMana(loc) {
     Route.updateBestRoute(loc, true);
     zones[currentZone].mineComplete();
-    zones[currentZone].mineComplete();
-    zones[currentZone].mineComplete();
-    zones[currentZone].mineComplete();
-    zones[currentZone].mineComplete();
-    setMined(loc.x, loc.y, ".");
     if (realms[currentRealm].name === "Long Realm") {
         routes.forEach(r => {
-            if (r.zone !== loc.zone.index ||
-                r.x !== loc.x ||
-                r.y !== loc.y)
+            if (r.zone !== loc.zone.index || r.x !== loc.x || r.y !== loc.y)
                 return;
             r.needsNewEstimate = true;
         });
     }
-    if (settings.autoRestart == AutoRestart.RestartDone && settings.grindMana)
-        shouldReset = true;
+    // Check if estimate can do one more run.
+    const mana = getStat("Mana");
+    if (settings.autoRestart == AutoRestart.RestartDone && settings.grindMana) {
+        const cur = currentRoutes.find(r => r.x == loc.x && r.y == loc.y && r.zone == currentZone);
+        if (!cur || cur.estimateRefineManaLeft() < 0) {
+            shouldReset = true;
+        }
+    }
+    // if (settings.autoRestart == AutoRestart.RestartDone && settings.grindMana) shouldReset = true;
     getRealmComplete(realms[currentRealm]);
 }
 function tickCollectMana(usedTime, loc, baseTime, clone) {
@@ -219,14 +219,28 @@ function longZoneCompletionMult(x, y, z) {
     return 0.99 ** (location.priorCompletionData[1] ** 0.75);
 }
 function canMineMana(location) {
-    if (location.completions)
-        return CanStartReturnCode.Never;
+   // if (location.completions)
+    //    return CanStartReturnCode.Never;
     return CanStartReturnCode.Now;
 }
 function mineManaRockCost(location, clone = null, realm = null, completionOveride) {
-    return location.completions && !completionOveride
-        ? 0
-        : Math.pow(1 + (0.1 + 0.05 * (location.zone.index + (realm == null ? currentRealm : realm))) * longZoneCompletionMult(location.x, location.y, location.zone.index), completionOveride ?? location.priorCompletions);
+    // Prestige, add mana rock reducer for point spend */
+    // return Math.pow(
+    // 			1 +
+    // 				(0.1 + 0.05 * (location.zone.index + (realm == null ? currentRealm : realm))) *
+    // 					longZoneCompletionMult(location.x, location.y, location.zone.index) *
+    // 					0.95 ** (prestige[2].level ** 0.75),
+    // 			completionOveride ?? location.priorCompletions
+    // 	  );
+    const formula = 1 +
+        (0.1 + 0.05 * (location.zone.index + (realm == null ? currentRealm : realm))) *
+            longZoneCompletionMult(location.x, location.y, location.zone.index);
+    // If completed previously in this route, subtract previous time.
+    if (location.completions && !completionOveride) {
+        return Math.pow(formula, location.priorCompletions + location.completions) -
+            Math.pow(formula, location.priorCompletions + location.completions - 1);
+    }
+    return Math.pow(formula, completionOveride ?? location.priorCompletions);
 }
 function mineGemCost(location) {
     return (location.completions + 1) ** 1.4;
@@ -526,15 +540,19 @@ function predictWither(location) {
 }
 function activatePortal() {
     breakActions = true;
-    moveToZone(currentZone + 1);
-	if (getStuff("Blood Mark").count)
+if (getStuff("Blood Mark").count)
 	getStuff("Blood Mark").update(-1);
+    moveToZone(currentZone + 1);
+	
     if (settings.pauseOnPortal && settings.running)
         toggleRunning();
 }
 function completeGoal(loc) {
     zones[currentZone].completeGoal();
     setMined(loc.x, loc.y);
+}
+function completeGoal2(loc) {
+    zones[currentZone].completeGoal2();
 }
 function getChopTime(base, increaseRate) {
     return () => base + increaseRate * queueTime * (realms[currentRealm].name == "Verdant Realm" ? VERDANT_GROW_MULT : 1);
@@ -712,6 +730,7 @@ const actions = [
     new Action("Heal", 1000, [["Runic Lore", 1]], completeHeal, startHeal, tickHeal, predictHeal),
     new Action("Portal", 1, [["Magic", 0.5], ["Runic Lore", 0.5]], activatePortal),
     new Action("Complete Goal", 1000, [["Speed", 1]], completeGoal),
+    new Action("Complete Goal2", 100000, [["Gemcraft", 1]], completeGoal2, simpleRequire([["Gem", 3]])),
     new Action("Chop", getChopTime(1000, 0.1), [["Woodcutting", 1], ["Speed", 0.2]], completeMine, null, isPainful),
     new Action("Kudzu Chop", getChopTime(1000, 0.1), [["Woodcutting", 1], ["Speed", 0.2]], completeMove, null, isPainfulNotSpread),
     new Action("Spore Chop", getChopTime(1000, 0.1), [["Woodcutting", 1], ["Speed", 0.2]], completeMine, null, tickSpore),
