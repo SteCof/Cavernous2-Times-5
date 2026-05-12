@@ -1,216 +1,125 @@
 "use strict";
-const MANA_START = 5;
-class Stat {
-    constructor(name, icon, description, base = 0, learnable = true) {
-        this.effectNode = null;
-        this.descriptionNode = null;
+class Rune {
+    constructor(name, icon, isInscribable, manaCost, description, createEvent, chargeEvent, activateAction) {
         this.name = name;
         this.icon = icon;
+        this.isInscribable = isInscribable;
+        this.manaCost = manaCost;
         this.description = description;
-        this.current = this.base = this.min = base;
-        this.learnable = learnable;
-        this.bonus = 0;
+        this.createEvent = createEvent;
+        this.chargeEvent = chargeEvent;
+        this.activateAction = activateAction;
+        this.unlocked = false;
+        this.upgradeCount = 0;
         this.node = null;
-        this.value = 1;
-        this.dirty = false;
-        this.lastIncreaseRequired = 0;
-        this.lastIncreaseUpdate = this.base;
     }
-    updateValue() {
-        if (this.current < 100) {
-            this.value = 100 / (100 + this.current + this.bonus);
-        }
-        else {
-            this.value = 100 / (100 + (this.current * (100 + this.bonus)) / 100);
-        }
-        this.dirty = true;
-    }
-    get baseValue() {
-        return 100 / (100 + this.base);
-    }
-    gainSkill(amount) {
-        if (isNaN(+amount)) {
+    createNode(index) {
+        if (this.node) {
+            this.node.classList.remove("not-available");
+            this.node.style.order = `${index}`;
             return;
         }
-        const prev = this.current;
-        this.current += amount / 10;
-        this.dirty = true;
-        if (this.current > 5 && prev <= 5) {
-            getMessage("Learning").display();
-        }
-        if (!this.learnable) {
-            return;
-        }
-        const scalingStart = 99 + getRealmMult("Compounding Realm");
-        const val = (this.current + 1) ** (0.9 * (this.base > scalingStart ? scalingStart / this.base : 1) ** 0.05) - (this.base + 1);
-        if (val < 0) {
-            return;
-        }
-        let prevVal = (prev + 1) ** (0.9 * (this.base > scalingStart ? scalingStart / this.base : 1) ** 0.05) - (this.base + 1);
-        if (prevVal < 0) {
-            prevVal = 0;
-        }
-        const increase = (val - prevVal) / this.statIncreaseDivisor * (0.99 + getRealmMult("Compounding Realm") / 100);
-        this.base += increase;
-    }
-    setStat(amount) {
-        // Combat stats don't decrease during one loop.
-        if (isNaN(+amount) || this.base + amount < this.current) {
-            return;
-        }
-        this.current = this.base + amount;
-        this.dirty = true;
-        this.update();
-    }
-    update(forceIncreaseAtUpdate = false) {
-        if (!this.dirty) {
-            return;
-        }
-        this.updateValue();
-        if (!this.node || !this.effectNode || !this.descriptionNode) {
-            if ((this.base === 0 && this.current === 0) || (["Health", "Attack", "Defense"].includes(this.name) && getStat("Combat").base === 0)) {
-                return;
-            }
-            this.createNode();
-            this.effectNode = this.node.querySelector(".effect");
-            this.descriptionNode = this.node.querySelector(".description");
-        }
-        if (this.name === "Mana") {
-            this.effectNode.innerText = `${writeNumber(this.current < 100 ? this.current + this.bonus : this.current * (1 + this.bonus / 100), 1)} (${writeNumber(this.base, 1)})`;
-        }
-        else if (!this.learnable) {
-            this.effectNode.innerText = writeNumber(this.current < 100 ? this.current + this.bonus : this.current * (1 + this.bonus / 100), 1);
-        }
-        else {
-            this.effectNode.innerText = `${writeNumber(this.current < 100 ? this.current + this.bonus : this.current * (1 + this.bonus / 100), 2)} (${writeNumber(this.base, 2)})`;
-            let increaseRequired;
-            const scalingStart = 99 + getRealmMult("Compounding Realm");
-            if (this.base < scalingStart) {
-                increaseRequired = (this.base + 1) ** (10 / 9) - 1;
-            }
-            else if (!forceIncreaseAtUpdate && this.lastIncreaseRequired && this.base - 0.01 < this.lastIncreaseUpdate) {
-                increaseRequired = this.lastIncreaseRequired;
-            }
-            else {
-                let v = this.base;
-                let step = this.base;
-                while (true) {
-                    const val = (v + 1) ** ((0.9 * scalingStart ** 0.05) / this.base ** 0.05) - (this.base + 1);
-                    if (Math.abs(val) < 0.1 || isNaN(val)) {
-                        break;
-                    }
-                    if (step < 0.1) {
-                        break;
-                    }
-                    if (val > 0) {
-                        v -= step;
-                        step /= 2;
-                    }
-                    if (val < 0) {
-                        v += step;
-                    }
-                }
-                increaseRequired = v;
-                this.lastIncreaseRequired = increaseRequired;
-                this.lastIncreaseUpdate = this.base;
-            }
-            const grindRoute = GrindRoute.getBestRoute(this.name);
-            this.descriptionNode.innerText = `${this.description} (${writeNumber(100 - this.value * 100, 1)}%)
-			Increase at: ${writeNumber(increaseRequired, 2)}
-			Current: ${writeNumber(this.current, 2)} + ${writeNumber(this.current < 100 ? this.bonus : this.current * (100 + this.bonus) / 100 - this.current, 2)}` +
-                (grindRoute ? `
-			Click to load best grind route (projected +${writeNumber(grindRoute?.projectedGain || 0, 3)}) in ${writeNumber(grindRoute?.totalTime / 1000 || 0, 1)}s
-			This route is in the ${realms[grindRoute.realm].name}.
-			Ctrl-click to delete this stat's grind route.` : "");
-        }
-        this.dirty = false;
-    }
-    createNode() {
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-        const statTemplate = document.querySelector("#stat-template");
-        if (statTemplate === null) {
-            throw new Error("No stat template");
-        }
-        this.node = statTemplate.cloneNode(true);
-        this.node.id = "stat_" + this.name.replace(" ", "-");
+        let runeTemplate = document.querySelector("#rune-template");
+        if (runeTemplate === null)
+            throw new Error("No rune template found");
+        this.node = runeTemplate.cloneNode(true);
+        this.node.id = "rune_" + this.name.replace(/\W/g, "_");
+        this.node.querySelector(".index").innerHTML = `${(index + 1) % 10}`;
         this.node.querySelector(".name").innerHTML = this.name;
-        this.node.querySelector(".icon").innerHTML = this.icon.length ? this.icon : "&nbsp";
-        this.node.querySelector(".description").innerHTML = this.description;
-        this.node.addEventListener("click", this.loadGrindRoute.bind(this));
-        document.querySelector("#stats").appendChild(this.node);
-        if (this.name === "Runic Lore") {
-            if (!document.querySelector(".active-pane")) {
-                document.querySelector("#runes").classList.add("active-pane");
+        this.node.querySelector(".icon").innerHTML = this.icon;
+        this.node.addEventListener("click", () => {
+            addRuneAction(runes.indexOf(this));
+        });
+        document.querySelector("#runes")?.appendChild(this.node);
+        let actionButtonNode = document.querySelector("#add-action-" + this.name.toLowerCase().replace(" ", "-")).parentNode;
+        actionButtonNode.classList.remove("hidden-action");
+        actionButtonNode.parentNode.classList.remove("hidden-action");
+        this.updateDescription();
+    }
+    notAvailable() {
+        if (this.node)
+            this.node.classList.add("not-available");
+    }
+    canAddToQueue() {
+        return !!this.node;
+    }
+    create(x, y) {
+        if (zones[currentZone].map[y + zones[currentZone].yOffset][x + zones[currentZone].xOffset] != ".")
+            return true;
+        let location = getMapLocation(x, y, true);
+        if (location === null)
+            throw new Error("Can't create rune at location");
+        if (location.baseType.name == "Mana Spring" || location.baseType.name == "Mana-infused Rock")
+            return true;
+        if (this.isInscribable() != CanStartReturnCode.Now) {
+            return false;
+        }
+        location.setTemporaryPresent(this);
+        setMined(x, y, this.icon);
+        if (this.createEvent)
+            this.createEvent(location);
+        return true;
+    }
+    unlock() {
+        this.unlocked = true;
+        updateRunes();
+    }
+    updateDescription() {
+        if (!this.node)
+            return;
+        let desc = this.description();
+        let match = desc.match(/\{.*\}/);
+        if (match) {
+            let realmDesc = JSON.parse(match[0].replace(/'/g, '"'));
+            desc = desc.replace(/\{.*\}/, realmDesc[currentRealm] || realmDesc[0]);
+        }
+        this.node.querySelector(".description").innerHTML = desc;
+    }
+}
+function updateRunes() {
+    for (let i = 0; i < runes.length; i++) {
+        if (runes[i].unlocked) {
+            runes[i].createNode(i);
+        }
+        else {
+            runes[i].notAvailable();
+        }
+    }
+}
+function createChargableRune(location) {
+    let action = location.getPresentAction();
+    action?.start(clones[0]);
+}
+function weakenCreatures(location) {
+    let x = location.x;
+    let y = location.y;
+    let locations = [getMapLocation(x - 1, y, true), getMapLocation(x + 1, y, true), getMapLocation(x, y - 1, true), getMapLocation(x, y + 1, true)];
+    for (let location of locations) {
+        if (location && location.creature) {
+            location.creature.attack = Math.max(location.creature.attack - 1, 0);
+            location.creature.defense = Math.max(location.creature.defense - 1, 0);
+        }
+    }
+}
+function canPlaceTeleport() {
+    for (let y = 0; y < zones[currentZone].map.length; y++) {
+        for (let x = 0; x < zones[currentZone].map[y].length; x++) {
+            if (zones[currentZone].map[y][x] == "T" || zones[currentZone].map[y][x] == "t") {
+                return CanStartReturnCode.Never;
             }
         }
     }
-    loadGrindRoute(event) {
-        if (!this.learnable)
-            return;
-        if (event?.ctrlKey || event?.metaKey) {
-            GrindRoute.deleteRoute(this.name);
-            this.dirty = true;
-            this.update();
-        }
-        else {
-            GrindRoute.getBestRoute(this.name)?.loadRoute();
-        }
-    }
-    reset() {
-        if (this.name === "Mana") {
-            this.base = MANA_START;
-        }
-        if (this.current === this.base && this.bonus === 0) {
-            return;
-        }
-	if (this.name === "Health") {
-		this.base = 10;
-	}
-        this.current = this.base;
-        this.bonus = 0;
-        this.dirty = true;
-    }
-    get statIncreaseDivisor() {
-        return settings.debug_statIncreaseDivisor || 1;
-    }
-    spendMana(amount) {
-        if (this.name !== "Mana") {
-            return;
-        }
-        this.current -= amount;
-        if (this.current < 0.01) {
-            this.current = 0;
-        }
-        this.dirty = true;
-        this.min = Math.min(this.current, this.min);
-    }
-    getBonus(amount) {
-        this.bonus += amount;
-        this.dirty = true;
-        this.update();
-    }
+    return CanStartReturnCode.Now;
 }
-const stats = [
-    new Stat("Mana", "", "How long you can resist being pulled back to your cave.  Also increases the maximum speed the game runs at.", MANA_START, false),
-    new Stat("Mining", "⛏", "Your skill at mining, reducing the time it takes to do mining-type tasks."),
-    new Stat("Woodcutting", "", "How good you are at chopping down mushrooms of various kinds."),
-    new Stat("Magic", "★", "Your understanding of arcane mysteries."),
-    new Stat("Speed", "", "How quick you are."),
-    new Stat("Smithing", hammerSVG, "Your skill at turning raw ores into usable objects."),
-    new Stat("Runic Lore", "🕮", "A measure of your understanding of magical runes."),
-    new Stat("Combat", "", "The speed at which you attack.", 0),
-    new Stat("Gemcraft", "", "You pick pretty stuff from the walls - in one piece.", 0),
-    new Stat("Chronomancy", "", "Your command of magic has expanded, even affecting the flow of time! (It helps you resist the leeching of time barriers)", 0),
-    new Stat("Attack", "", "How much damage your wild flailing does. (Weapons increase all clones' stats)", 0, false),
-    new Stat("Defense", "", "How well you avoid taking damage. (Shields increase all clones' stats)", 0, false),
-    new Stat("Health", "♥", "How many hits you can take until you're nothing more than meat. (Armour increases all clones' stats)", 10, false)
+function getRune(name) {
+    return runes.find(a => a.name == name);
+}
+const runes = [
+    new Rune("Weaken", "W", simpleRequire([["Iron Bar", 1], ["Gold Nugget", 1]]), 0, () => `This rune weakens any orthogonally adjacent enemies,  decreasing their attack and defense by 1.<br>Requires:<br>{'0':'1 Iron Bar<br>1 Gold Nugget', '1':'2 Iron Bars<br>2 Gold Nuggets'}`, weakenCreatures, null),
+    new Rune("Wither", "H", simpleRequire([["Salt", 1], ["Iron Ore", 1], ["Gold Nugget", 1]]), 0, () => `This rune allows you to kill even hardy orthogonally ${((getRune("Wither").upgradeCount || 0) > 0 ? "or diagonally " : "")}adjacent plants.  Interact with it to charge it up - it takes ${((getRune("Wither").upgradeCount || 0) > 1 ? "1/" + 2 ** (getRune("Wither").upgradeCount - 1) : "")} as much Temporal to charge as the plants you're trying to kill would take to chop.<br>Requires:<br>{'0':'1 Salt<br>1 Iron Ore${getRealm("Verdant Realm").completed || getRealm("Verdant Realm").maxMult > 1e307 ? "" : "<br>1 Gold Nugget"}', '1':'2 Salt<br>2 Iron Ore${getRealm("Verdant Realm").completed ? "" : "<br>2 Gold Nuggets"}'}`, null, null, "Charge Wither"),
+    new Rune("Duplication", "D", () => CanStartReturnCode.Now, 1000, () => `Mine more resources with this rune.  After placing it,  interact with it to charge it up.  You'll receive +${(1 + (getRune("Duplication").upgradeCount || 0) * 0.25)} of each (orthogonally or diagonally) adjacent resource (when mined), though each rune placed in a zone costs twice as much to charge as the last.`, createChargableRune, null, "Charge Duplication"),
+    new Rune("Teleport To", "T", canPlaceTeleport, 0, () => `This rune allows someone or something to come through from another place.  Only one can be placed,  and it must be charged after placement.  Use a pathfind action right after teleporting to fix the path prediction.`, null, null, "Charge Teleport"),
+    new Rune("Teleport From", "F", simpleRequire([["Iron Ore", 2]]), 1000, () => `This rune allows someone to slip beyond to another place.  Interact with it after inscribing it to activate it.<br>Requires:<br>{'0':'2 Iron Ore', '1':'4 Iron Ore'}`, null, null, "Teleport"),
+    new Rune("Pump", "P", simpleRequire([["Iron Bar", 3], ["Steel Bar", 1]]), 0, () => `This rune drains water from surrounding spaces.  It drains log_2(Runic Lore) / 25 water per second from its space and a quarter that from the 4 adjacent spaces.<br>Requires:<br>{'0':'3 Iron Bars<br>1 Steel Bar', '1':'6 Iron Bars<br>2 Steel Bars'}`, null, null, "Pump"),
 ];
-function getStat(name) {
-    return stats.find(a => a.name === name);
-}
-function getBaseMana(zone = currentZone, realm = currentRealm) {
-    return MANA_START + zones.reduce((a, z, i) => {
-        return i > zone ? a : a + z.cacheManaGain[realm];
-    }, 0);
-}
-//# sourceMappingURL=stats.js.map
+//# sourceMappingURL=runes.js.map
