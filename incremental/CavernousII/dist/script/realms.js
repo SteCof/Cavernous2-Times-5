@@ -85,7 +85,7 @@ function changeRealms(newRealm) {
 }
 function getRealmMult(name, force = false) {
     const realm = getRealm(name);
-    if (realm.mult === undefined || realm.mult === null || force) {
+    if (realm.mult === undefined || realm.mult === null || realm.name === "Hostile Realm" || force) {
         realm.mult =
             zones.reduce((a, z) => {
                 return (a +
@@ -102,6 +102,9 @@ function getVerdantMultDesc() {
 }
 function getHostileMultDesc() {
     return `Total boost: x${writeNumber(getRealmMult("Hostile Realm", true), 4)}`;
+}
+function getMidasMultDesc() {
+    return `Total effectiveness boost: x${writeNumber(getRealmMult("Hostile Realm", true), 4)}`;
 }
 function getCompoundingMultDesc() {
     return `Stat slowdown start: ${writeNumber(99 + getRealmMult("Compounding Realm", true), 4)}`;
@@ -123,7 +126,7 @@ const verdantMapping = {
     "√": "♠",
     "«": "♣",
     "╖": "α",
-    "╣": "§",
+    "╣": "¶",
     "■": "δ", // Chert -> Springshroom (you can't get here, but still...)
 };
 function convertMapToVerdant(map, zoneNumber) {
@@ -142,6 +145,14 @@ function convertMapToHostile(map, zoneNumber) {
     const notReUnlocked = getRealm("Hostile Realm").maxMult === 2;
     return map.map(row => [...row].map(cell => ( hostileMapping[cell] || cell)).join(""));
 }
+const midasMapping = {
+    "%": "+",
+    "☼": "+",
+    "░": "+",
+    "○": "+",
+    // All resources become gold, including gems (and, once added, obsidian)
+};
+
 const realms = [];
 realms.push(
 // Default realm, no special effects.
@@ -170,6 +181,13 @@ realms.push(
 new Realm("Hostile Realm", "A realm that seems to want you dead more than any other. Mana rocks are unstable, forges and lava here burn you, and all the shrooms are at least a little poisonous.", () => getRealm("Hostile Realm").machineCompletions + 3,
     () => {
     getRealm("Hostile Realm").machineCompletions++;
+    getMessage("Blood and Sacrifice").display();
+}, getHostileMultDesc, 0.0005, 2));
+
+realms.push(
+new Realm("Midas Realm", "A realm that seems to want you dead more than any other. Mana rocks are unstable, forges and lava here burn you, and all the shrooms are at least a little poisonous.", () => getRealm("Midas Realm").machineCompletions + 3,
+    () => {
+    getRealm("Midas Realm").machineCompletions++;
     getMessage("Blood and Sacrifice").display();
 }, getHostileMultDesc, 0.0005, 2));
 
