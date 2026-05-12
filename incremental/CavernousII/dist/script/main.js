@@ -90,7 +90,6 @@ function resetLoop(noLoad = false, saveGame = true) {
         c.attack = c.creature.attack;
         c.defense = c.creature.defense;
         c.health = c.creature.health;
-	c.damageAtStartOfSalt=0;
         c.drawHealth();
     });
     zones.forEach(z => {
