@@ -51,7 +51,7 @@ class Stat {
             prevVal = 0;
         }
         const increase = (val - prevVal) / this.statIncreaseDivisor * (0.99 + getRealmMult("Compounding Realm") / 100);
-        this.base += 5*increase;
+        this.base += increase;
     }
     setStat(amount) {
         // Combat stats don't decrease during one loop.
@@ -163,12 +163,15 @@ class Stat {
         if (this.current === this.base && this.bonus === 0) {
             return;
         }
+	if (this.name === "Health") {
+		this.base = 10;
+	}
         this.current = this.base;
         this.bonus = 0;
         this.dirty = true;
     }
     get statIncreaseDivisor() {
-        return settings.debug_statIncreaseDivisor || 100;
+        return settings.debug_statIncreaseDivisor || 1;
     }
     spendMana(amount) {
         if (this.name !== "Mana") {
@@ -195,7 +198,7 @@ const stats = [
     new Stat("Speed", "", "How quick you are."),
     new Stat("Smithing", hammerSVG, "Your skill at turning raw ores into usable objects."),
     new Stat("Runic Lore", "🕮", "A measure of your understanding of magical runes."),
-    new Stat("Combat", "", "Your ability to kill things.", 0),
+    new Stat("Combat", "", "The speed at which you attack.", 0),
     new Stat("Gemcraft", "", "You pick pretty stuff from the walls - in one piece.", 0),
     new Stat("Chronomancy", "", "Your command of magic has expanded, even affecting the flow of time! (It helps you resist the leeching of time barriers)", 0),
     new Stat("Attack", "", "How much damage your wild flailing does. (Weapons increase all clones' stats)", 0, false),
