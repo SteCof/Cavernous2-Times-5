@@ -1,752 +1,1660 @@
-"use strict";
-const BARRIER_DRAIN = 5;
-const VERDANT_GROW_MULT = 5;
-let actionIdCounter = 0;
-class ActionInstance {
-    constructor(action, location, isMove) {
-        this.appliedWither = 0;
-        this.id = actionIdCounter++; // Every ActionInstance gets a unique id!
-        this.isStarted = false;
-        this.moved = false;
-        this.action = action;
-        this.location = location;
-        this.isMove = isMove;
-        this.startingDuration = this.remainingDuration = 0;
-    }
-    get expectedLeft() {
-        const skillDiv = this.action.getSkillDiv();
-        return this.remainingDuration * skillDiv;
-    }
-    start(clone) {
-        if (this.isStarted)
-            return CanStartReturnCode.Now;
-        const canStart = this.action.attemptStart(this.location, clone);
-        if (canStart == CanStartReturnCode.Now && this.remainingDuration == 0) {
-            this.startingDuration = this.remainingDuration = this.action.getDuration(this.location, clone);
-        }
-        if (canStart == CanStartReturnCode.Now)
-            this.isStarted = true;
-        return canStart;
-    }
-    tick(time, clone) {
-        this.remainingDuration = Math.max(0, this.remainingDuration + this.appliedWither - this.location.wither);
-        this.appliedWither = this.location.wither;
-        const skillDiv = this.action.getSkillDiv();
-        let usedTime = Math.min(time / skillDiv, this.remainingDuration);
-        this.action.tick(usedTime, this.location, usedTime * skillDiv, clone);
-        this.remainingDuration -= usedTime;
-        if (this.remainingDuration == 0) {
-            this.isStarted = false;
-            if (this.action.complete(this.location, clone, this)) {
-                this.start(clone);
-            }
-            else if (this.isMove) {
-                loopCompletions++;
-                this.location.entered++;
-            }
-            else {
-                this.location.completions++;
-            }
-        }
-        usedTime *= skillDiv;
-    }
+:root {
+	--cell-size: 12px;
 }
-class Action {
-    constructor(name, baseDuration, stats, complete, attemptStart = null, tickExtra = null, specialDuration = () => 1) {
-        this.name = name;
-        this.baseDuration = baseDuration;
-        this.stats = stats.map(s => [getStat(s[0]), s[1]]);
-        this.complete = complete || (() => { });
-        this.attemptStart = attemptStart || (() => CanStartReturnCode.Now);
-        this.tickExtra = tickExtra;
-        this.specialDuration = specialDuration;
-    }
-    tick(usedTime, loc, baseTime = 0, clone) {
-        for (let i = 0; i < this.stats.length; i++) {
-            this.stats[i][0].gainSkill((baseTime / 1000) * this.stats[i][1]);
-        }
-        if (this.tickExtra) {
-            this.tickExtra(usedTime, loc, baseTime, clone);
-        }
-    }
-    getDuration(location, clone) {
-        let duration = (typeof this.baseDuration == "function" ? this.baseDuration() : this.baseDuration) * this.specialDuration(location, clone);
-        if (realms[currentRealm].name == "Long Realm") {
-            duration *= 3;
-        }
-        else if (realms[currentRealm].name == "Compounding Realm") {
-            duration *= 1 + loopCompletions / 40;
-        }
-        return duration;
-    }
-    getBaseDuration(realm = currentRealm) {
-        let duration = (typeof this.baseDuration == "function" ? this.baseDuration() : this.baseDuration) / 1000;
-        if (realms[realm].name == "Long Realm") {
-            duration *= 3;
-        }
-        else if (realms[realm].name == "Compounding Realm") {
-            duration *= 1 + loopCompletions / 40;
-        }
-        return duration;
-    }
-    getProjectedDuration(location, applyWither = 0, useDuration = 0) {
-        let duration;
-        if (useDuration > 0) {
-            duration = useDuration;
-        }
-        else {
-            duration = (typeof this.baseDuration == "function" ? this.baseDuration() : this.baseDuration) * this.specialDuration(location);
-            duration -= applyWither;
-        }
-        duration *= this.getSkillDiv();
-        if (!useDuration) {
-            if (realms[currentRealm].name == "Long Realm") {
-                duration *= 3;
-            }
-            else if (realms[currentRealm].name == "Compounding Realm") {
-                duration *= 1 + loopCompletions / 40;
-            }
-        }
-        return duration;
-    }
-    increaseStat(stat, amount) {
-        const index = this.stats.findIndex(s => s[0].name == stat);
-        if (index == -1) {
-            this.stats.push([getStat(stat), amount]);
-        }
-        else {
-            this.stats[index][1] += amount;
-        }
-    }
-    getSkillDiv() {
-        if (this.name == "Wait" || this.name == "Long Wait")
-            return 1;
-        let mult = 1;
-        for (let i = 0; i < this.stats.length; i++) {
-            mult *= Math.pow(this.stats[i][0].value, this.stats[i][1]);
-        }
-        return mult;
-    }
-}
-function baseWalkLength() {
-    return 100 * (realms[currentRealm].name == "Long Realm" ? 3 : 1);
-}
-function completeMove(loc, clone, action) {
-    clone.x = loc.x;
-    clone.y = loc.y;
-    setMined(loc.x, loc.y);
-    action.moved = true;
-}
-function completeMine(loc) {
-    setMined(loc.x, loc.y);
-    getMessage("Digging").display();
-}
-function getDuplicationAmount(loc) {
-    let x = loc.x, y = loc.y;
-    let amount = 1;
-    const zone = zones[currentZone];
-    x += zone.xOffset;
-    y += zone.yOffset;
-    const rune_locs = [
-        [x - 1, y],
-        [x + 1, y],
-        [x, y - 1],
-        [x, y + 1],
-        [x - 1, y + 1],
-        [x + 1, y + 1],
-        [x + 1, y - 1],
-        [x - 1, y - 1]
-    ];
-    rune_locs.forEach(([X, Y]) => {
-        amount += +(zone.map[Y][X] == "d") * (getRune("Duplication").upgradeCount * 0.25 + 1);
-    });
-    return amount;
-}
-function completeGoldMine(loc) {
-    const gold = getStuff("Gold Nugget");
-    gold.update(getDuplicationAmount(loc));
-    if (gold.count >= 5)
-        getMessage("Mass Manufacturing").display();
-    setMined(loc.x, loc.y);
-}
-function completeIronMine(loc) {
-    const iron = getStuff("Iron Ore");
-    iron.update(getDuplicationAmount(loc));
-    setMined(loc.x, loc.y);
-}
-function completeCoalMine(loc) {
-    getStuff("Coal").update(getDuplicationAmount(loc));
-    setMined(loc.x, loc.y);
-}
-function completeSaltMine(loc, clone) {
-    getStuff("Salt").update(getDuplicationAmount(loc));
-    setMined(loc.x, loc.y);
-	clone.damageAtStartOfSalt==0
-}
-function completeCollectMana(loc) {
-    Route.updateBestRoute(loc, true);
-    zones[currentZone].mineComplete();
-    if (realms[currentRealm].name === "Long Realm") {
-        routes.forEach(r => {
-            if (r.zone !== loc.zone.index || r.x !== loc.x || r.y !== loc.y)
-                return;
-            r.needsNewEstimate = true;
-        });
-    }
-    // Check if estimate can do one more run.
-    const mana = getStat("Mana");
-    if (settings.autoRestart == AutoRestart.RestartDone && settings.grindMana) {
-        const cur = currentRoutes.find(r => r.x == loc.x && r.y == loc.y && r.zone == currentZone);
-        if (!cur || cur.estimateRefineManaLeft() < 0) {
-            shouldReset = true;
-        }
-    }
-    // if (settings.autoRestart == AutoRestart.RestartDone && settings.grindMana) shouldReset = true;
-    getRealmComplete(realms[currentRealm]);
-}
-function tickCollectMana(usedTime, loc, baseTime, clone) {
-    Route.updateBestRoute(loc);
-	    if (realms[currentRealm].name == "Hostile Realm") {
-        spreadDamage(baseTime/ 4000, clone);
-    }
-}
-function longZoneCompletionMult(x, y, z) {
-    if (x === undefined || y === undefined)
-        return 1;
-    const location = zones[z].getMapLocation(x, y, true);
-    if (location === null)
-        throw new Error("Location not found");
-    return 0.99 ** (location.priorCompletionData[1] ** 0.75);
-}
-function canMineMana(location) {
-   // if (location.completions)
-    //    return CanStartReturnCode.Never;
-    return CanStartReturnCode.Now;
-}
-function mineManaRockCost(location, clone = null, realm = null, completionOveride) {
-    // Prestige, add mana rock reducer for point spend */
-    // return Math.pow(
-    // 			1 +
-    // 				(0.1 + 0.05 * (location.zone.index + (realm == null ? currentRealm : realm))) *
-    // 					longZoneCompletionMult(location.x, location.y, location.zone.index) *
-    // 					0.95 ** (prestige[2].level ** 0.75),
-    // 			completionOveride ?? location.priorCompletions
-    // 	  );
-    const formula = 1 +
-        (0.1 + 0.05 * (location.zone.index + (realm == null ? currentRealm : realm))) *
-            longZoneCompletionMult(location.x, location.y, location.zone.index);
-    // If completed previously in this route, subtract previous time.
-    if (location.completions && !completionOveride) {
-        return Math.pow(formula, location.priorCompletions + location.completions) -
-            Math.pow(formula, location.priorCompletions + location.completions - 1);
-    }
-    return Math.pow(formula, completionOveride ?? location.priorCompletions);
-}
-function mineGemCost(location) {
-    return (location.completions + 1) ** 1.4;
-}
-function completeCollectGem(loc) {
-    getStuff("Gem").update(getDuplicationAmount(loc));
-}
-function startActivateMachine() {
-    const gold = getStuff("Gold Nugget");
-    const needed = realms[currentRealm].getNextActivateAmount();
-    return gold.count >= needed ? CanStartReturnCode.Now : CanStartReturnCode.NotNow;
-}
-function completeActivateMachine() {
-    const gold = getStuff("Gold Nugget");
-    const needed = realms[currentRealm].getNextActivateAmount();
-    gold.update(-needed);
-    realms[currentRealm].activateMachine();
-    getRealmComplete(realms[currentRealm]);
-}
-function simpleCreate(target) {
-    function create() {
-        for (let i = 0; i < target.length; i++) {
-            const stuff = getStuff(target[i][0]);
-            stuff.update(target[i][1]);
-        }
-    }
-    return create;
-}
-function simpleRequire(requirement, doubleExcempt = false) {
-    function haveEnough() {
-        const mult = realms[currentRealm].name == "Long Realm" && !doubleExcempt ? 2 : 1;
-        for (let i = 0; i < requirement.length; i++) {
-            const stuff = getStuff(requirement[i][0]);
-            if (stuff.count < requirement[i][1] * (requirement[i][0].match(/Armour|Sword|Shield|Bridge/) ? 1 : mult))
-                return CanStartReturnCode.NotNow;
-        }
-        for (let i = 0; i < requirement.length; i++) {
-            const stuff = getStuff(requirement[i][0]);
-            stuff.update(-requirement[i][1] * (requirement[i][0].match(/Armour|Sword|Shield|Bridge/) ? 1 : mult));
-        }
-        return CanStartReturnCode.Now;
-    }
-    return haveEnough;
-}
-function canMakeEquip(requirement, equipType) {
-    function canDo() {
-        const itemCount = stuff.reduce((a, c) => a + (c.name.includes(equipType) ? c.count : 0), 0);
-        if (itemCount >= clones.length)
-            return CanStartReturnCode.Never;
-        const haveStuff = simpleRequire(requirement)();
-        if (haveStuff == CanStartReturnCode.NotNow)
-            return CanStartReturnCode.NotNow;
-        return CanStartReturnCode.Now;
-    }
-    return canDo;
-}
-function haveBridge() {
-    if (getStuff("Iron Bridge").count || getStuff("Steel Bridge").count)
-        return CanStartReturnCode.Now;
-    return CanStartReturnCode.NotNow;
-}
-function haveBlood() {
-    if (getStuff("Blood Mark").count)
-        return CanStartReturnCode.Now;
-    return CanStartReturnCode.NotNow;
-}
-function completeGoldMana() {
-    const manaMult = getRealmMult("Verdant Realm") || 1;
-    getStat("Mana").current += GOLD_VALUE * manaMult;
-    currentLoopLog.vaporizeGold(1, GOLD_VALUE * manaMult);
-    return false;
-}
-function completeCrossPit(loc) {
-    let bridge = getStuff("Iron Bridge");
-    if (bridge.count < 1) {
-        bridge = getStuff("Steel Bridge");
-        if (bridge.count < 1 || !settings.useDifferentBridges)
-            return true;
-    }
-    bridge.update(-1);
-    setMined(loc.x, loc.y);
-    return false;
-}
-function completeCrossLava(loc, clone, action) {
-    let bridge = getStuff("Steel Bridge");
-    if (bridge.count < 1) {
-        bridge = getStuff("Iron Bridge");
-        if (bridge.count < 1 || !settings.useDifferentBridges)
-            return true;
-        bridge.update(-1);
-        completeMove(loc, clone, action);
-        if (realms[currentRealm].name == "Hostile Realm"){
-	let zoneNumber = zones[currentZone].index;
-        clone.takeDamage(1.95+zoneNumber);
-	clone.takeDamage(0.05);}
 
-        getMessage("Lava Can't Melt Steel Bridges").display();
-        return;
-    }
-    bridge.update(-1);
-    setMined(loc.x, loc.y, ".");
-    loc.entered = Infinity;
-    return false;
+body {
+	padding: 10px;
+	background: #aacccc;
+	font-family: "Times New Roman", Times, serif;
 }
-function tickFight(usedTime, loc, baseTime, clone) {
-    if (!loc.creature)
-        throw new Error("No creature to fight");
-    let damage = (Math.max(loc.creature.attack - getStat("Defense").current, 0) * baseTime) / 1000;
-    if (loc.creature.defense >= getStat("Attack").current && loc.creature.attack <= getStat("Defense").current) {
-        damage = baseTime / 1000;
-    }
-    clone.inCombat = true;
-    spreadDamage(damage, clone);
+
+#templates {
+	display: none;
 }
-function spreadDamage(damage, clone) {
-    const targetClones = clones.filter(c => c.x == clone.x && c.y == clone.y && c.damage < Infinity);
-    targetClones.forEach(c => {
-        c.takeDamage(damage / targetClones.length);
-    });
+
+.version {
+	text-align: center;
+	font-size: 10px;
+	position: absolute;
+	bottom: 0;
+	left: 50%;
+	transform: translateX(-50%);
 }
-let combatTools = [
-    [getStuff("Iron Axe"), 0.01, getStat("Woodcutting")],
-    [getStuff("Iron Pick"), 0.01, getStat("Mining")],
-    [getStuff("Iron Hammer"), 0.01, getStat("Smithing")],
-    [getStuff("Runic Tome"), 0.02, getStat("Runic Lore")],
-];
-function combatDuration() {
-    let duration = 1;
-    for (let i = 0; i < combatTools.length; i++) {
-        duration *= Math.pow(combatTools[i][2].value, combatTools[i][1] * combatTools[i][0].count);
-    }
-    return duration;
+
+.block {
+	border: 1px solid #00000033;
+	display: inline-block;
+	padding: 2px;
+	text-align: center;
+	position: relative;
 }
-function completeFight(loc) {
-    const attack = getStat("Attack").current;
-    const creature = loc.creature;
-    if (!creature)
-        throw new Error("No creature to fight");
-    if (creature.health) {
-        creature.health = Math.max(creature.health - Math.max(attack - creature.defense, 0), 0);
-        creature.drawHealth();
-    }
-    if (!creature.health) {
-        clones.forEach(c => {
-            c.inCombat = false;
-        });
-        setMined(loc.x, loc.y);
-        return false;
-    }
-    return true;
+
+.block-row:not([hidden]), .block-row.option {
+	border: 1px solid #00000033;
+	display: flex;
+	padding: 2px;
+	text-align: center;
+	/* position: relative; */
+	height: auto;
+	justify-content: space-evenly;
 }
-// Prevent backing out of combat
-function startHeal(loc, clone) {
-    return clone.inCombat ? CanStartReturnCode.Never : CanStartReturnCode.Now;
+
+.option-separator {
+	margin: 10px 0;
 }
-function tickHeal(usedTime, loc, baseTime, clone) {
-    clone.takeDamage(-usedTime / 1000);
+
+#stats {
+	z-index: -1;
 }
-function completeHeal(loc, clone) {
-    return clone.damage > 0;
+
+.stat {
+	height: 20px;
+	width: calc(100% - 6px);
+	white-space: nowrap;
+	display: flex;
+	justify-content: space-between;
 }
-function predictHeal(loc, clone = null) {
-    if (!clone)
-        return 1;
-    return Math.max(clone.damage * getStat("Runic Lore").value, 0.01);
+
+.stat .description {
+	white-space: initial;
+	top: 18px;
 }
-function startChargeTeleport() {
-    for (let y = 0; y < zones[currentZone].map.length; y++) {
-        for (let x = 0; x < zones[currentZone].map[y].length; x++) {
-            if (zones[currentZone].map[y][x] == "t") {
-                return CanStartReturnCode.Never;
-            }
-        }
-    }
-    return CanStartReturnCode.Now;
+
+.relevant-stat {
+	background-color: #bbdddd;
 }
-function startTeleport() {
-    for (let y = 0; y < zones[currentZone].map.length; y++) {
-        for (let x = 0; x < zones[currentZone].map[y].length; x++) {
-            if (zones[currentZone].map[y][x] == "t") {
-                return CanStartReturnCode.Now;
-            }
-        }
-    }
-    return CanStartReturnCode.NotNow;
+
+.option {
+	height: 20px;
+	width: 194px;
 }
-function completeTeleport(loc, clone) {
-    for (let y = 0; y < zones[currentZone].map.length; y++) {
-        for (let x = 0; x < zones[currentZone].map[y].length; x++) {
-            if (zones[currentZone].map[y][x] == "t") {
-                clone.x = x - zones[currentZone].xOffset;
-                clone.y = y - zones[currentZone].yOffset;
-                return;
-            }
-        }
-    }
+
+.small-option {
+	min-width: 21px;
 }
-function predictTeleport() {
-    for (let y = 0; y < zones[currentZone].map.length; y++) {
-        for (let x = 0; x < zones[currentZone].map[y].length; x++) {
-            if (zones[currentZone].map[y][x] == "t") {
-                return 1;
-            }
-        }
-    }
-    return Infinity;
+
+.small-option .svg {
+	width: 20px;
 }
-function startChargableRune(location) {
-    if (location.completions > 0) {
-        return CanStartReturnCode.Never;
-    }
-    return CanStartReturnCode.Now;
+
+.option-row {
+	position: relative;
 }
-function duplicateDuration() {
-    let runes = 0;
-    for (let y = 0; y < zones[currentZone].map.length; y++) {
-        runes += zones[currentZone].map[y].split(/[dD]/).length - 1;
-    }
-    return 2 ** (runes - 1);
+
+.option-row > .block.option {
+	position: static;
 }
-function completeChargeRune(loc) {
-    setMined(loc.x, loc.y, zones[currentZone].map[loc.y + zones[currentZone].yOffset][loc.x + zones[currentZone].xOffset].toLowerCase());
+
+.option.option--half-width {
+	width: 46%;
 }
-function tickWither(usedTime, loc) {
-    let x = loc.x + zones[currentZone].xOffset;
-    let y = loc.y + zones[currentZone].yOffset;
-    const wither = getRune("Wither");
-    const adjacentPlants = [
-        shrooms.includes(zones[currentZone].map[y - 1][x]) ? zones[currentZone].mapLocations[y - 1][x] : null,
-        shrooms.includes(zones[currentZone].map[y][x - 1]) ? zones[currentZone].mapLocations[y][x - 1] : null,
-        shrooms.includes(zones[currentZone].map[y + 1][x]) ? zones[currentZone].mapLocations[y + 1][x] : null,
-        shrooms.includes(zones[currentZone].map[y][x + 1]) ? zones[currentZone].mapLocations[y][x + 1] : null
-    ].filter((p) => p !== null);
-    if (wither.upgradeCount > 0) {
-        adjacentPlants.push(...[
-            shrooms.includes(zones[currentZone].map[y - 1][x - 1]) ? zones[currentZone].mapLocations[y - 1][x - 1] : null,
-            shrooms.includes(zones[currentZone].map[y + 1][x - 1]) ? zones[currentZone].mapLocations[y + 1][x - 1] : null,
-            shrooms.includes(zones[currentZone].map[y + 1][x + 1]) ? zones[currentZone].mapLocations[y + 1][x + 1] : null,
-            shrooms.includes(zones[currentZone].map[y - 1][x + 1]) ? zones[currentZone].mapLocations[y - 1][x + 1] : null
-        ].filter((p) => p !== null));
-    }
-    adjacentPlants.forEach(loc => {
-        loc.wither += usedTime * (wither.upgradeCount ? 2 ** (wither.upgradeCount - 1) : 1);
-        if (loc.type.getEnterAction(loc.entered).getProjectedDuration(loc, loc.wither) <= 0) {
-            setMined(loc.x, loc.y, ".");
-            loc.wither = 0;
-            loc.entered = Infinity;
-        }
-    });
+
+.option.option-highlighted {
+	background: #ffff0077;
 }
-function completeWither(loc) {
-    let x = loc.x + zones[currentZone].xOffset;
-    let y = loc.y + zones[currentZone].yOffset;
-    const adjacentPlants = [
-        shrooms.includes(zones[currentZone].map[y - 1][x]) ? zones[currentZone].mapLocations[y - 1][x] : null,
-        shrooms.includes(zones[currentZone].map[y][x - 1]) ? zones[currentZone].mapLocations[y][x - 1] : null,
-        shrooms.includes(zones[currentZone].map[y + 1][x]) ? zones[currentZone].mapLocations[y + 1][x] : null,
-        shrooms.includes(zones[currentZone].map[y][x + 1]) ? zones[currentZone].mapLocations[y][x + 1] : null
-    ].filter(p => p);
-    if (getRune("Wither").upgradeCount > 0) {
-        adjacentPlants.push(...[
-            shrooms.includes(zones[currentZone].map[y - 1][x - 1]) ? zones[currentZone].mapLocations[y - 1][x - 1] : null,
-            shrooms.includes(zones[currentZone].map[y + 1][x - 1]) ? zones[currentZone].mapLocations[y + 1][x - 1] : null,
-            shrooms.includes(zones[currentZone].map[y + 1][x + 1]) ? zones[currentZone].mapLocations[y + 1][x + 1] : null,
-            shrooms.includes(zones[currentZone].map[y - 1][x + 1]) ? zones[currentZone].mapLocations[y - 1][x + 1] : null
-        ].filter(p => p));
-    }
-    if (!adjacentPlants.length)
-        return false;
-    return true;
+
+.option.double-height {
+	height: 40px;
 }
-function predictWither(location) {
-    let x = location.x;
-    let y = location.y;
-    if (x === null || y === null)
-        return 1;
-    x += zones[currentZone].xOffset;
-    y += zones[currentZone].yOffset;
-    const wither = getRune("Wither");
-    const adjacentPlants = [
-        shrooms.includes(zones[currentZone].map[y - 1][x]) ? zones[currentZone].mapLocations[y - 1][x] : null,
-        shrooms.includes(zones[currentZone].map[y][x - 1]) ? zones[currentZone].mapLocations[y][x - 1] : null,
-        shrooms.includes(zones[currentZone].map[y + 1][x]) ? zones[currentZone].mapLocations[y + 1][x] : null,
-        shrooms.includes(zones[currentZone].map[y][x + 1]) ? zones[currentZone].mapLocations[y][x + 1] : null
-    ].filter((p) => p !== null);
-    if (wither.upgradeCount > 0) {
-        adjacentPlants.push(...[
-            shrooms.includes(zones[currentZone].map[y - 1][x - 1]) ? zones[currentZone].mapLocations[y - 1][x - 1] : null,
-            shrooms.includes(zones[currentZone].map[y + 1][x - 1]) ? zones[currentZone].mapLocations[y + 1][x - 1] : null,
-            shrooms.includes(zones[currentZone].map[y + 1][x + 1]) ? zones[currentZone].mapLocations[y + 1][x + 1] : null,
-            shrooms.includes(zones[currentZone].map[y - 1][x + 1]) ? zones[currentZone].mapLocations[y - 1][x + 1] : null
-        ].filter((p) => p !== null));
-    }
-    if (!adjacentPlants.length)
-        return 0;
-    return Math.max(...adjacentPlants.map(loc => loc.type.getEnterAction(loc.entered).getProjectedDuration(loc, loc.wither))) / 2000 + 0.1;
+
+#grind-option .description {
+	min-width: 180px;
+	width: unset;
 }
-function activatePortal() {
-    breakActions = true;
-if (getStuff("Blood Mark").count)
-	getStuff("Blood Mark").update(-1);
-    moveToZone(currentZone + 1);
+
+#grind-stats-table td {
+	text-align: right;
+	padding-right: 3px;
+}
+
+#grind-stats-header,
+#grind-stats-footer {
+	font-weight: bold;
+}
+
+#grind-stats-header td {
+	padding: 0 3px;
+}
+
+td.failed {
+	color: #ff0000;
+}
+
+td.drowned {
+	text-decoration: underline;
+}
+
+td.unreached {
+	background-color: #33333333;
+}
+
+td.revisit {
+	font-weight: bold;
+}
+
+td.skipped {
+	font-style: italic;
+}
+
+.action {
+	line-height: 20px;
+	min-width: 16px;
+	user-select: none;
+	text-align: center;
+	background-clip: content-box;
+	box-sizing: border-box;
+	width: 16px;
+	background: linear-gradient(#01322066,#01322066);
+	background-repeat: no-repeat;
+}
+
+.action:not(.started) {
+	background: transparent;
+	transition: background-color 0.4s;
+}
+
+.action-count {
+	position: absolute;
+	top: 0px;
+	height: 5px;
+	border: 1px solid black;
+	border-bottom: none;
+	text-align: center;
+	font-size: smaller;
+	pointer-events: none;
+}
+
+.action-count::before {
+	content: attr(data-count);
+	text-align: center;
+	margin-top: -4px;
+	position: absolute;
+	background-color: #aaccccdd;
+	margin-left: -3px;
+}
+
+.action-count.double-digit::before {
+	margin-left: -6px;
+}
+
+.character {
+	width: 16px;
+	line-height: 14px;
+}
+
+svg {
+	pointer-events: none;
+}
+
+.bottom-block {
+	display: inline-block;
+	vertical-align: top;
+	width: 100%;
+	height: 26px;
+	box-sizing: border-box;
+	border: 1px solid #00000077;
+	border-radius: 5px;
+	padding: 0 2px;
+	margin: 1px 0;
+	position: relative;
+	overflow-x: auto;
+	overflow-y: hidden;
+	scrollbar-width: thin;
+	scrollbar-color: #88aaaa #aacccc;
+	white-space: nowrap;
+}
+
+.bottom-block.saved-queue.drop-below {
+	border-bottom: 2px solid;
+	margin-bottom: 0;
+}
+
+.bottom-block.saved-queue.drop-above {
+	border-top: 2px solid;
+	margin-top: 0;
+}
+
+#saved-queues .bottom-block > *,
+#saved-queues .bottom-block > *,
+#saved-queues .bottom-block > *,
+#saved-queues .bottom-block > * {
+	height: 16px;
+	vertical-align: bottom;
+}
+
+.bottom-block::-webkit-scrollbar {
+	height: 8px;
+}
+
+.bottom-block::-webkit-scrollbar-thumb {
+	background-color: #88aaaa;
+}
+
+.queue-inner {
+	display: inline-flex;
+	flex-direction: row;
+	min-width: calc(100% - 120px);
+	padding-right: 16px;
+}
+
+.clone-info {
+	position: absolute;
+	bottom: 90px;
+	width: calc(100% - 19px);
+	border-top: 2px solid #5559;
+	left: -1px;
+	padding: 10px;
+}
+
+.clone-info h6 {
+	margin: -19 auto 0 auto;
+	text-align: center;
+	background-color: #acc;
+	width: 50%;
+}
+
+.queue-time {
+	position: absolute;
+	bottom: 6px;
+	right: 8px;
+}
+
+#queue-actions {
+	display: none;
+}
+
+#actions-spent,
+#current-barrier-mult,
+#time-spent-zone,
+#time-spent {
+	font-family: "Lucida Console", monospace;
+	font-size: 14px;min-width: 3.1em;
+	display: inline-block;
+	text-align: right;
+	font-variant-numeric: tabular-nums;
+}
+
+#barrier-mult {
+	display: none;
+}
+
+#queues {
+	margin-top: 10px;
+	/* will-change: opacity; */
+}
+
+.queue {
+	user-select: none;
+}
+
+#timelines {
+	margin-top: 10px;
+	contain: style layout;
+}
+
+.timeline {
+	contain: style layout;
+}
+
+.timeline:not(#loop-actions) {
+	height: 20px;
+	display: inline-flex;
+	flex-direction: row;
+	min-width: calc(100% - 120px);
+
+	vertical-align: top;
+	width: 100%;
+	box-sizing: border-box;
+	border: 1px solid #00000077;
+	overflow-y: visible;
+	scrollbar-width: thin;
+	scrollbar-color: #88aaaa #aacccc;
+	white-space: nowrap;
+}
+
+.timeline > div {
+	position: relative;
+}
+
+.timeline:not(#loop-actions) > div:hover::after {
+	content: attr(data-name)"\a"attr(data-time)"ms";
+	position: absolute;
+	margin-top: -34px;
+	background-color: #ffffcc;
+	color: #000000;
+	font-size: 14px;
+	z-index: 50;
+	white-space: pre;
+	pointer-events: none;
+	padding: 2px;
+}
+
+.timeline:not(#loop-actions) > div:last-child:hover::after {
+	right: 0;
+}
+
+.timeline > div.Walk {
+	background-color: #ffffff;
+}
+
+.timeline > div.Wait {
+	background-color: #aaaaaa;
+}
+
+.timeline > div.Dead {
+	background-color: #000000;
+}
+
+.timeline > div.No-action {
+	background-color: #ff88ff;
+}
+
+.timeline > div.Mine,
+.timeline > div.Mine-Travertine,
+.timeline > div.Mine-Granite,
+.timeline > div.Mine-Basalt,
+.timeline > div.Mine-Plume,
+.timeline > div.Mine-Chert,
+.timeline > div.Mine-Iron,
+.timeline > div.Mine-Coal,
+.timeline > div.Mine-Salt
+{
+	background-color: #666666;
+}
+
+.timeline > div.Mine-Gold {
+	background-color: #ffee00;
+}
+
+.timeline > div.Mine-Gem,
+.timeline > div.Collect-Gem {
+	background-color: #90ee90;
+}
+
+.timeline > div.Turn-Gold-to-Mana,
+.timeline > div.Collect-Mana {
+	background-color: #0088ff;
+}
+
+.timeline > div.Create-Clone {
+	background-color: #00ff00;
+}
+
+.timeline > div.Make-Iron-Bars,
+.timeline > div.Make-Steel-Bars {
+	background-color: #ff8800;
+}
+.timeline > div.Cross-Pit {
+	background-color: #000000;
+}
+
+.timeline > div.Cross-Lava {
+	background-color: #ff5555;
+}
+
+.timeline > div.Create-Bridge,
+.timeline > div.Create-Long-Bridge,
+.timeline > div.Upgrade-Bridge
+{
+	background-color: #884400;
+}
+
+.timeline > div.Read {
+	background-color: #ff00ff;
+}
+.timeline > div.Create-Sword,
+.timeline > div.Upgrade-Sword,
+.timeline > div.Create-Shield,
+.timeline > div.Upgrade-Shield,
+.timeline > div.Create-Armour,
+.timeline > div.Upgrade-Armour
+{
+	background-color: #aaaa00;
+}
+
+.timeline > div.Attack-Creature {
+	background-color: #ff0000;
+}
+.timeline > div.Teleport {
+	background-color: #ff0099;
+}
+.timeline > div.Charge-Duplication,
+.timeline > div.Charge-Wither,
+.timeline > div.Charge-Teleport
+{
+	background-color: #990099;
+}
+.timeline > div.Heal {
+	background-color: #00ff00;
+}
+
+.timeline > div.Chop {
+	background-color: #009900;
+}
+.timeline > div.Kudzu-Chop {
+	background-color: #007700;
+}
+.timeline > div.Spore-Chop {
+	background-color:#32805c;
+}
+.timeline > div.Oyster-Chop {
+	background-color: #ff5500;
+}
+.timeline > div.Create-Axe,
+.timeline > div.Create-Pick,
+.timeline > div.Create-Hammer
+{
+	background-color: #aaff00;
+}
+
+.timeline > div.Create-Crystal-Ball,
+.timeline > div.Create-Runestone
+{
+	background-color: #aacc77;
+}
+
+.timeline > div.Mine-Obsidian
+{
+	background: repeating-linear-gradient(#222222, #111111 4px, #555555 3px, #aaaaaa 4px);
+}
+
+.selected-clone,
+.saved-queue:focus {
+	border-color: #008000aa;
+	background-color: #00ff0056;
+}
+
+.queue > span {
+	flex: 1;
+}
+
+.queue > .name {
+	flex: 2;
+}
+
+.stuff {
+	display: none;
+	width: 100%;
+	user-select: none;
+}
+
+#stuff-inner {
+	column-count: 3;
+	column-gap: 8px;
+	width: 194px;
+	position: relative;
+}
+
+/* .block.stuff {
+	position: static;
+} */
+
+.block > .description {
+	visibility: hidden;
+	position: absolute;
+	margin-top: 0px;
+	left: 2px;
+	width: 180px;
+	background: #99bbbb;
+	border: 1px solid #00000033;
+	z-index: 5;
+	pointer-events: none;
+	padding: 2px;
+	color: #000000;
+}
+
+.option.small-option.block > .description {
+	width: 200px;
+	white-space: initial;
+}
+
+.small-option.block > .description {
+	left: unset;
+	right: 0;
+	width: auto;
+	white-space: nowrap;
+	margin-bottom: 3px;
+}
+
+.block > .big-description {
+	width: 360px;
+}
+
+.block.stuff > .description {
+	top: calc(100% + 3px);
+	backface-visibility: hidden;
+}
+
+.block:hover:not(.dragging) .description {
+	visibility: visible;
+}
+
+.progress-indicator {
+	width: 0;
+	height: 100%;
+	background-color: #00000012;
+	position: absolute;
+	top: 0;
+	left: 0;
+}
+
+.stuff .name {
+	font-size: 12px;
+}
+
+.current-action {
+	border: 2px solid #008000;
+	margin-top: -1px;
+	margin-left: -1px;
+}
+
+.drag-highlight-top {
+	border-top-color: #800000;
+}
+
+.drag-highlight-bottom {
+	border-bottom-color: #800000;
+}
+
+.action .name {
+	font-size: 0.9em;
+}
+
+.clickable {
+	cursor: pointer;
+}
+
+.ripple {
+	background-color: #23b8da;
+	transition: background-color 1s;
+}
+
+.half-width {
+	width: 46%;
+}
+
+#add-count {
+	width: 50px;
+	margin-top: -1px;
+}
+
+.vertical-blocks {
+	display: flex;
+	justify-content: space-between;
+	position: relative;
+	z-index: 1;
+}
+
+.vertical-block {
+	/* will-change: opacity; */
+	flex-shrink: 0;
+	width: 200px;
+	height: 600px;
+	border: 2px solid #00000077;
+	border-radius: 5px;
+	padding: 2px;
+	position: relative;
+	user-select: none;
+}
+
+.bottom-vertical-block {
+	position: absolute;
+	bottom: 2px;
+}
+
+.wide {
+	/* width: 500px; */
+	width: auto;
+	flex-grow: 0.5;
+}
+
+h3, h4 {
+	text-align: center;
+}
+
+h4#location-name {
+	padding: 0;
+	margin: 0;
+}
+
+#location-details {
+	max-height: 67%;
+	overflow-y: auto;
+	scrollbar-width: thin;
+}
+
+#map {
+	padding: 2px 0 0px;
+	display: flex;
+	flex-direction: column;
+	contain: style layout;
+}
+
+#map-legend {
+	position: absolute;
+	bottom: 0;
+	left: 50%;
+	transform: translateX(-50%);
+}
+
+.map-legend-item {
+	position: relative;
+	height: 26px;
+}
+
+.map-legend-name {
+	display: block;
+	position: absolute;
+	left: 0;
+}
+
+.map-legend-icon {
+	display: block;
+	position: absolute;
+	right: 0;
+	border: 3px solid #a52a2a;
+	background-color: #a52a2a;
+}
+
+#realm-select {
+	white-space: nowrap;
+	/* overflow-x: scroll; */
+	scrollbar-width: thin;
+	scrollbar-color: #5b6d6d #aacccc;
+}
+
+.realm {
+	display: inline-block;
+	padding: 2px;
+	cursor: pointer;
+}
+
+.realm:not(:first-child) {
+	border-left: 1px solid #5b6d6d;
+}
+
+.realm .description {
+	visibility: hidden;
+	position: absolute;
+	margin-top: 2px;
+	left: 5px;
+	width: 250px;
+	background: #99bbbb;
+	border: 1px solid #00000033;
+	z-index: 50;
+	pointer-events: none;
+	padding: 2px;
+	color: #000000;
+	white-space: normal;
+}
+
+.realm:hover .description {
+	visibility: visible;
+}
+
+.active-realm {
+	background-color: #88aaaa;
+}
+
+#zone-select {
+	white-space: nowrap;
+	/* overflow-x: scroll; */
+	scrollbar-width: thin;
+	scrollbar-color: #5b6d6d #aacccc;
+}
+
+.zone:not(td) {
+	display: inline-block;
+	padding: 2px;
+	cursor: pointer;
+}
+
+.zone:not(:first-child) {
+	border-left: 1px solid #5b6d6d;
+}
+
+.active-zone {
+	background-color: #88aaaa;
+}
+
+.require .actions,
+.zone .actions {
+	color: #000000;
+	font-weight: bold;
+	display: inline-block;
+}
+
+.zone .mana {
+	color: #0000ff;
+	width: 50px;
+	display: inline-block;
+}
+
+.zone > .routes {
+	visibility: hidden;
+	position: absolute;
+	margin-top: -2px;
+	left: 5px;
+	min-width: 200px;
+	background: #99bbbb;
+	border: 1px solid #00000033;
+	z-index: 50;
+	padding: 2px;
+	color: #000000;
+	cursor: default;
+	overflow-y: scroll;
+	scrollbar-width: thin;
+	max-height: 100%;
+}
+
+.zone:hover > .routes {
+	visibility: visible;
+}
+
+.routes h4 {
+	margin: 0;
+}
+
+.routes h4:first-of-type {
+	top: 0;
+	position: sticky;
+	background: #aacccc;
+}
+
+.routes div {
+	cursor: pointer;
+	display: flex;
+}
+
+.routes div:hover {
+	background-color: #88aaaa;
+}
+
+.routes .require,
+.routes .stuff {
+	display: inline-block;
+	width: unset;
+}
+
+.routes .unused {
+	background-color: #9999cc;
+}
+
+.routes .active {
+	background-color: #88cc88;
+}
+
+.routes .orphaned {
+	border: 1px solid #bf3333;
+}
+
+.route-legend {
+	width: 33%;
+	display: inline-block;
+}
+
+#failed-route {
+	display: none;
+	color: red;
+	font-weight: bold;
+}
+
+#dead-route {
+	display: none;
+	color: red;
+	font-weight: bold;
+}
+
+#delete-route-button {
+	background-color: #ff000033;
+	border-color: #ff000033;
+}
+
+#nogrind-button {
+	background-color: #33cc3333;
+	border-color: #33cc3333;
+}
+
+#nogrind-button.dontgrind {
+	background-color: #cc333333;
+	border-color: #cc333333;
+}
+
+.delete-route {
+	border-radius: 25%;
+	float: right;
+	text-align: right;
+	flex-grow: 1;
+}
+
+.delete-route-inner {
+	width: 14px;
+	border-radius: 25%;
+	display: inline-block;
+	text-align: center;
+}
+
+.delete-route-inner:hover {
+	background-color: #ff3333cc;
+}
+
+#map-inner {
+	border-collapse: collapse;
+	table-layout: fixed;
+	margin-top: 20px;
+	font-size: var(--cell-size);
+	align-self: center;
+}
+
+td.selected-map-cell {
+	outline: 0.1em solid #ffff00;
+	z-index: 9;
+}
+
+td {
+	width: 1em;
+	height: 1em;
+	position: relative;
+	line-height: 1;
+	padding: 0;
+	font-size: inherit;
+}
+
+body.test-16px td {
+	width: 16px;
+	height: 16px;
+	font-size: 16px;
+}
+
+td.occupied:before {
+	border: 0.1em solid rgb(0, 0, 0);
+	outline: 0.05em solid red;
+	z-index: 10;
+	content: " ";
+}
+
+td.final-location:before,
+td.cursor-location:before,
+td.hover-location:before {
+	border: 0.1em solid #0000ff;
+	outline: 0.05em solid blue;
+	width: 100%;
+	height: 100%;
+	z-index: 10;
+	content: " ";
+	box-sizing: border-box;
+}
+
+td.cursor-location:before {
+	border-color: #00ff00;
+	outline-color: #00ff00;
+}
+
+td.hover-location:before {
+	border-color: #ff00ff;
+	outline-color: #ff00ff;
+}
+
+body.test-16px td.occupied:before,
+body.test-16px td.final-location:before,
+body.test-16px td.hover-location:before {
+	border-width: 2px;
+}
+
+td.altar {
+	background-color: #550000;
 	
-    if (settings.pauseOnPortal && settings.running)
-        toggleRunning();
-}
-function completeGoal(loc) {
-    zones[currentZone].completeGoal();
-    setMined(loc.x, loc.y);
-}
-function completeGoal2(loc) {
-    zones[currentZone].completeGoal2();
-}
-function getChopTime(base, increaseRate) {
-    return () => base + increaseRate * queueTime * (realms[currentRealm].name == "Verdant Realm" ? VERDANT_GROW_MULT : 1);
-}
-function tickSpore(usedTime, loc, baseTime, clone) {
-	if (realms[currentRealm].name == "Hostile Realm") {
-        spreadDamage(baseTime / 500, clone);
-    }
-	else {spreadDamage(baseTime / 1000, clone);}
-}
-function completeBarrier(loc) {
-    zones[currentZone].manaDrain += BARRIER_DRAIN;
-    document.querySelector("#barrier-mult").style.display = "block";
-    document.querySelector("#current-barrier-mult").innerHTML = `x${zones[currentZone].manaDrain + 1}`;
-    setMined(loc.x, loc.y);
-}
-function startBarrier(location) {
-    let barrierNumber = +zones[currentZone].map[location.y + zones[currentZone].yOffset][location.x + zones[currentZone].xOffset];
-    if (!isNaN(barrierNumber) && getRealm("Compounding Realm").machineCompletions >= barrierNumber)
-        return CanStartReturnCode.Now;
-    return CanStartReturnCode.Never;
-}
-function barrierDuration() {
-    if (realms[currentRealm].name == "Compounding Realm") {
-        return 1 / (1 + loopCompletions / 40);
-    }
-    return 1;
-}
-function completeSacrifice(loc, clone) {
-    clone.takeDamage(1e38);
-    clone.takeDamage(1e38);
-	if(realms[currentRealm].name == "Long Realm" && loc.completions%2 == 0) {	
-    }
-	else {getStuff("Blood Mark").update(+getRealm("Hostile Realm").machineCompletions);}
 }
 
-function haveBloodmark() {
-    if (getStuff("Blood Mark").count)
-        return CanStartReturnCode.Now;
-    return CanStartReturnCode.NotNow;
-}
-function isPainful(usedTime, loc, baseTime, clone) {
-    if (realms[currentRealm].name == "Hostile Realm") {
-        spreadDamage(baseTime / 3000, clone);
-    }
+td.altar:before {
+	content: "†";
 }
 
-function isVeryPainful(usedTime, loc, baseTime, clone) {
-    if (realms[currentRealm].name == "Hostile Realm") {
-        spreadDamage(baseTime / 1000, clone);
-    }
-}
-function isPainfulNotSpread(usedTime, loc, baseTime, clone) {
-    if (realms[currentRealm].name == "Hostile Realm") {
-        clone.takeDamage(baseTime / 3000);
-    }
+td.demongate {
+	background-color: #666000;
 }
 
-function saltInWounds(usedTime, loc, baseTime, clone) {
-    	if (realms[currentRealm].name == "Hostile Realm") {
-    	if (clone.damageAtStartOfSalt==0){
-	 clone.damageAtStartOfSalt=clone.damage;
-    }	
-       clone.takeDamage(baseTime*clone.damageAtStartOfSalt/2000);
-    }
+td.demongate:before {
+	content: "⛧";
+}
+td.wall {
+	/* background-color: #000000; */
+	background: repeating-linear-gradient(45deg, #000000, #000000 1px, #ffffff66 1px, #666666 2px);
 }
 
-function completeGame() {
-    getMessage("You Win!").display();
-    // Reunlock VR
-    const vr = getRealm("Verdant Realm");
-    vr.maxMult = 1e308;
-    vr.completed = false;
-    vr.display();
+td.tunnel {
+	background-color: #eeeeee;
 }
-var ACTION;
-(function (ACTION) {
-    ACTION["WALK"] = "Walk";
-    ACTION["WAIT"] = "Wait";
-    ACTION["LONG_WAIT"] = "Long Wait";
-    ACTION["MINE"] = "Mine";
-    ACTION["MINE_TRAVERTINE"] = "Mine Travertine";
-    ACTION["MINE_GRANITE"] = "Mine Granite";
-    ACTION["MINE_BASALT"] = "Mine Basalt";
-    ACTION["MINE_CHERT"] = "Mine Chert";
-    ACTION["MINE_GOLD"] = "Mine Gold";
-    ACTION["MINE_IRON"] = "Mine Iron";
-    ACTION["MINE_COAL"] = "Mine Coal";
-    ACTION["MINE_SALT"] = "Mine Salt";
-    ACTION["MINE_GEM"] = "Mine Gem";
-    ACTION["COLLECT_GEM"] = "Collect Gem";
-    ACTION["COLLECT_MANA"] = "Collect Mana";
-    ACTION["ACTIVATE_MACHINE"] = "Activate Machine";
-    ACTION["MAKE_IRON_BARS"] = "Make Iron Bars";
-    ACTION["MAKE_STEEL_BARS"] = "Make Steel Bars";
-    ACTION["TURN_GOLD_TO"] = "Turn Gold to Mana";
-    ACTION["CROSS_PIT"] = "Cross Pit";
-    ACTION["CROSS_LAVA"] = "Cross Lava";
-    ACTION["CREATE_BRIDGE"] = "Create Bridge";
-    ACTION["CREATE_LONG_BRIDGE"] = "Create Long Bridge";
-    ACTION["UPGRADE_BRIDGE"] = "Upgrade Bridge";
-    ACTION["READ"] = "Read";
-    ACTION["CREATE_SWORD"] = "Create Sword";
-    ACTION["UPGRADE_SWORD"] = "Upgrade Sword";
-    ACTION["ENCHANT_SWORD"] = "Enchant Sword";
-    ACTION["CREATE_SHIELD"] = "Create Shield";
-    ACTION["UPGRADE_SHIELD"] = "Upgrade Shield";
-    ACTION["ENCHANT_SHIELD"] = "Enchant Shield";
-    ACTION["CREATE_ARMOUR"] = "Create Armour";
-    ACTION["UPGRADE_ARMOUR"] = "Upgrade Armour";
-    ACTION["ENCHANT_ARMOUR"] = "Enchant Armour";
-    ACTION["ATTACK_CREATURE"] = "Attack Creature";
-    ACTION["TELEPORT"] = "Teleport";
-    ACTION["CHARGE_DUPLICATION"] = "Charge Duplication";
-    ACTION["CHARGE_WITHER"] = "Charge Wither";
-    ACTION["CHARGE_TELEPORT"] = "Charge Teleport";
-    ACTION["PUMP"] = "Pump";
-    ACTION["HEAL"] = "Heal";
-    ACTION["PORTAL"] = "Portal";
-    ACTION["COMPLETE_GOAL"] = "Complete Goal";
-    ACTION["CHOP"] = "Chop";
-    ACTION["CHOP_KUDZU"] = "Kudzu Chop";
-    ACTION["CHOP_SPORE"] = "Spore Chop";
-    ACTION["CHOP_OYSTER"] = "Oyster Chop";
-    ACTION["CREATE_AXE"] = "Create Axe";
-    ACTION["CREATE_PICK"] = "Create Pick";
-    ACTION["CREATE_HAMMER"] = "Create Hammer";
-    ACTION["ENTER_BARRIER"] = "Enter Barrier";
-    ACTION["EXIT"] = "Exit";
-    ACTION["SACRIFICE"] = "Sacrifice";
-    ACTION["DEMON_CHECK"] = "Demonic Checkpoint";
-    ACTION["CREATE_TOME"] = "Create Tome"
-})(ACTION || (ACTION = {}));
-const actions = [
-    new Action("Walk", 100, [["Speed", 1]], completeMove),
-    new Action("Wait", 100, [["Speed", 1]], () => { }),
-    new Action("Long Wait", () => settings.longWait, [["Speed", 1]], () => { }),
-    new Action("Mine", 1000, [["Mining", 1], ["Speed", 0.2]], completeMine),
-    new Action("Mine Travertine", 10000, [["Mining", 1], ["Speed", 0.2]], completeMine),
-    new Action("Mine Granite", 350000, [["Mining", 1], ["Speed", 0.2]], completeMine),
-    new Action("Mine Basalt", 4000000, [["Mining", 1], ["Speed", 0.2]], completeMine),
-    new Action("Mine Basalt Plume", getChopTime(3000000, 1), [["Mining", 1], ["Speed", 0.2]], completeMine, null, isPainful),
-    new Action("Mine Chert", 50000000, [["Mining", 1], ["Speed", 0.2]], completeMine),
-    new Action("Mine Gold", 1000, [["Mining", 1], ["Speed", 0.2]], completeGoldMine),
-    new Action("Mine Iron", 2500, [["Mining", 2]], completeIronMine),
-    new Action("Mine Coal", 5000, [["Mining", 2]], completeCoalMine),
-    new Action("Mine Salt", 50000, [["Mining", 1]], completeSaltMine, null, saltInWounds),
-    new Action("Mine Gem", 100000, [["Mining", 0.75], ["Gemcraft", 0.25]], completeMine),
-    new Action("Collect Gem", 100000, [["Smithing", 0.1], ["Gemcraft", 1]], completeCollectGem, null, null, mineGemCost),
-    new Action("Collect Mana", 1000, [["Magic", 1]], completeCollectMana, canMineMana, tickCollectMana, mineManaRockCost),
-    new Action("Activate Machine", 1000, [], completeActivateMachine, startActivateMachine),
-    new Action("Make Iron Bars", 5000, [["Smithing", 1]], simpleCreate([["Iron Bar", 1]]), simpleRequire([["Iron Ore", 1]], true, null), isPainful),
-    new Action("Make Steel Bars", 15000, [["Smithing", 1]], simpleCreate([["Steel Bar", 1]]), simpleRequire([["Iron Bar", 1], ["Coal", 1]], true, null), isVeryPainful),
-    new Action("Turn Gold to Mana", 1000, [["Magic", 1]], completeGoldMana, simpleRequire([["Gold Nugget", 1]], true)),
-    new Action("Cross Pit", 3000, [["Smithing", 1], ["Speed", 0.3]], completeCrossPit, haveBridge),
-    new Action("Cross Lava", 6000, [["Smithing", 1], ["Speed", 0.3]], completeCrossLava, haveBridge),
-    new Action("Create Bridge", 5000, [["Smithing", 1]], simpleCreate([["Iron Bridge", 1]]), simpleRequire([["Iron Bar", 2]])),
-    new Action("Create Long Bridge", 50000, [["Smithing", 1]], simpleCreate([["Iron Bridge", 1]]), simpleRequire([["Iron Bar", 2]])),
-    new Action("Upgrade Bridge", 12500, [["Smithing", 1]], simpleCreate([["Steel Bridge", 1]]), simpleRequire([["Steel Bar", 1], ["Iron Bridge", 1]])),
-    new Action("Create Sword", 7500, [["Smithing", 1]], simpleCreate([["Iron Sword", 1]]), canMakeEquip([["Iron Bar", 3]], "Sword")),
-    new Action("Upgrade Sword", 22500, [["Smithing", 1]], simpleCreate([["Steel Sword", 1]]), simpleRequire([["Steel Bar", 2], ["Iron Sword", 1]])),
-    new Action("Enchant Sword", 3000000, [["Smithing", 0.5], ["Gemcraft", 0.5]], simpleCreate([["+1 Sword", 1]]), simpleRequire([["Gem", 3], ["Steel Sword", 1]])),
-    new Action("Create Shield", 12500, [["Smithing", 1]], simpleCreate([["Iron Shield", 1]]), canMakeEquip([["Iron Bar", 5]], "Shield")),
-    new Action("Upgrade Shield", 27500, [["Smithing", 1]], simpleCreate([["Steel Shield", 1]]), simpleRequire([["Steel Bar", 2], ["Iron Shield", 1]])),
-    new Action("Enchant Shield", 3000000, [["Smithing", 0.5], ["Gemcraft", 0.5]], simpleCreate([["+1 Shield", 1]]), simpleRequire([["Gem", 3], ["Steel Shield", 1]])),
-    new Action("Create Armour", 10000, [["Smithing", 1]], simpleCreate([["Iron Armour", 1]]), canMakeEquip([["Iron Bar", 4]], "Armour")),
-    new Action("Upgrade Armour", 25000, [["Smithing", 1]], simpleCreate([["Steel Armour", 1]]), simpleRequire([["Steel Bar", 2], ["Iron Armour", 1]])),
-    new Action("Enchant Armour", 3000000, [["Smithing", 0.5], ["Gemcraft", 0.5]], simpleCreate([["+1 Armour", 1]]), simpleRequire([["Gem", 3], ["Steel Armour", 1]])),
-    new Action("Attack Creature", 1000, [["Combat", 1]], completeFight, null, tickFight, combatDuration),
-    new Action("Teleport", 1, [["Runic Lore", 1]], completeTeleport, startTeleport, null, predictTeleport),
-    new Action("Charge Duplication", 50000, [["Runic Lore", 1]], completeChargeRune, startChargableRune, null, duplicateDuration),
-    new Action("Charge Wither", 1000, [["Runic Lore", 1]], completeWither, null, tickWither, predictWither),
-    new Action("Charge Teleport", 50000, [["Runic Lore", 1]], completeChargeRune, startChargeTeleport),
-    new Action("Pump", 0, [], () => { }),
-    new Action("Heal", 1000, [["Runic Lore", 1]], completeHeal, startHeal, tickHeal, predictHeal),
-    new Action("Portal", 1, [["Magic", 0.5], ["Runic Lore", 0.5]], activatePortal),
-    new Action("Complete Goal", 1000, [["Speed", 1]], completeGoal),
-    new Action("Complete Goal2", 100000, [["Gemcraft", 1]], completeGoal2, simpleRequire([["Gem", 3]])),
-    new Action("Chop", getChopTime(1000, 0.1), [["Woodcutting", 1], ["Speed", 0.2]], completeMine, null, isPainful),
-    new Action("Kudzu Chop", getChopTime(1000, 0.1), [["Woodcutting", 1], ["Speed", 0.2]], completeMove, null, isPainfulNotSpread),
-    new Action("Spore Chop", getChopTime(1000, 0.1), [["Woodcutting", 1], ["Speed", 0.2]], completeMine, null, tickSpore),
-    new Action("Oyster Chop", getChopTime(1000, 0.2), [["Woodcutting", 1], ["Speed", 0.2]], completeMine, null, isPainful),
-    new Action("Create Axe", 2500, [["Smithing", 1]], simpleCreate([["Iron Axe", 1]]), simpleRequire([["Iron Bar", 1]])),
-    new Action("Create Pick", 2500, [["Smithing", 1]], simpleCreate([["Iron Pick", 1]]), simpleRequire([["Iron Bar", 1]])),
-    new Action("Create Hammer", 2500, [["Smithing", 1]], simpleCreate([["Iron Hammer", 1]]), simpleRequire([["Iron Bar", 1]])),
-    new Action("Enter Barrier", 10000, [["Chronomancy", 1]], completeBarrier, startBarrier, null, barrierDuration),
-    new Action("Create Tome", 1000000, [["Smithing", 0.5]], [["Gemcraft", 0.5]], simpleCreate([["Runic Tome", 1]]), simpleRequire([["Gem", 2], ["Gold", 1]])),
-    new Action("Sacrifice", 1000, [["Runic Lore", 1]], completeSacrifice),
-    new Action("Demonic Checkpoint", 1000, [["Runic Lore", 1]], completeMine, haveBloodmark),
-    new Action("Exit", 50000000, [["Mining", 0.25], ["Woodcutting", 0.25], ["Magic", 0.25], ["Speed", 0.25], ["Smithing", 0.25], ["Runic Lore", 0.25], ["Combat", 0.25], ["Gemcraft", 0.25], ["Chronomancy", 0.25]], completeGame),
-];
-function getAction(name) {
-    return actions.find(a => a.name == name);
+
+td.limestone {
+	background-color: #a52a2a;
 }
-getAction("Wait").getDuration = getAction("Wait").getBaseDuration = getAction("Wait").getProjectedDuration = () => getAction("Wait").baseDuration;
-getAction("Long Wait").getDuration = getAction("Long Wait").getBaseDuration = getAction("Long Wait").getProjectedDuration = () => getAction("Long Wait").baseDuration();
-//# sourceMappingURL=actions.js.map
+
+td.travertine {
+	background-color: #ce9d84;
+}
+
+td.granite {
+	background-color: #795039;
+}
+
+td.basalt {
+	background: repeating-linear-gradient(-45deg, #2b251d, #2b251d 1px, #4b453d 2px, #5b554d 2px);
+}
+
+td.basaltplume {
+	background: repeating-linear-gradient(-60deg, #2b251d, #2b251d 1px, #4b453d 3px, #5b554d 1px);
+}
+
+td.obsidian {
+	background: repeating-radial-gradient(#2f2f1d, #2b251d 3px, #4b453d 2px, #111111 2px, #bbbbbb 4px, #ff55ff 3px);
+}
+
+td.chert {
+	background: repeating-linear-gradient(60deg, #000000, #4b453d 1px, #000000 2px, #7b756d 2px);
+}
+
+td.mushroom {
+	background-color: #135513;
+}
+
+td.kudzushroom {
+	background-color: #034503;
+}
+
+td.sporeshroom {
+	background-color: #32805c;
+}
+
+td.oystershroom {
+	background-color: #1e573c;
+}
+
+td.springshroom {
+	background-color: #006767;
+}
+
+td.gold {
+	background-color: #ffd700;
+}
+
+td.mana,
+td.mined-mana {
+	background-color: #2a78a5;
+}
+
+td.mined-mana:before {
+	content: "*";
+}
+
+td.gem,
+td.mined-gem {
+	background-color: #90ee90;
+}
+
+td.mined-gem:before {
+	content: "*";
+}
+
+td.clone-machine {
+	background-color: #9acd32;
+}
+
+td.iron {
+	background-color: #777777;
+}
+
+td.salt {
+	background-color: #ffffff;
+	background-image:  radial-gradient(#000000 0.9px, transparent 0.9px), radial-gradient(#000000 0.9px, #ffffff 0.9px);
+	background-size: 5px 5px;
+	background-position: 0 0,18px 18px;
+}
+
+td.furnace,
+td.furnace2 {
+	background-color: #777777;
+}
+
+td.furnace:before,
+td.furnace2:before {
+	content: "#";
+}
+
+td.vaporizer {
+	background-color: #9acd32;
+}
+
+td.vaporizer:before {
+	content: "#";
+}
+
+td.fountain {
+	background-color: #008000;
+}
+
+td.fountain:before {
+	content: "+";
+	font-weight: bolder;
+}
+
+td.bridge,
+td.bridge2,
+td.bridge3,
+td.sword,
+td.sword2,
+td.shield,
+td.shield2,
+td.armour,
+td.armour2,
+td.axe,
+td.pick,
+td.hammer {
+	background-color: #444444;
+}
+
+td.bridge:before,
+td.bridge2:before,
+td.bridge3:before {
+	content: "⎶";
+}
+
+td.sword:before,
+td.sword2:before,
+td.sword3:before {
+	content: "⚔";
+}
+
+td.shield:before,
+td.shield2:before,
+td.shield3:before {
+	content: "⛨";
+	font-size: 0.916em;
+	padding-top: 15%;
+	padding-left: 6%;
+}
+
+td.armour:before,
+td.armour2:before,
+td.armour3:before {
+	content: "]";
+	font-size: 0.833em;
+	font-weight: bold;
+	padding-bottom: 0.2em;
+}
+
+td.crystalshaper:before {
+	content: "★";
+}
+
+td.crystalshaper {
+	background-color: #90ee90;
+}
+
+td.runecarver:before {
+	content: "ᛝ";
+}
+
+td.runecarver {
+	background-color: #90ee90;
+}		
+
+td.axe:before {
+	content: "¢";
+}
+
+td.pick:before {
+	content: "⛏";
+}
+
+td.hammer:before {
+	content: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 100 100' fill='black'><g><path d='M 91.9799,91.807365 18.079698,16.036452 25.563263,8.5529065 101.33436,82.452928 Z' /> <rect width='24.971128' height='13.971112' x='22.162033' y='7.162077' transform='matrix(0.70710772,0.70710584,-0.70710756,0.70710601,0,0)' /> <path d='M 18.115658,40.012506 8.6448037,30.806257 21.500632,17.265495 C 34.342634,4.4235229 48.2233,-2.5167945 52.503969,1.763861 L 62.503992,11.763863 C 58.223325,7.4832065 44.342658,14.423523 31.500655,27.265494 Z' /></g></svg>");
+}
+
+td.pit {
+	background-color: #000000;
+}
+
+td.lava {
+	background-color: #ff0000;
+}
+
+td.lava:before {
+	content: "~";
+	font-size: 1.416em;
+	text-shadow: 0px -4px 0px black;
+	line-height: 0.1;
+}
+
+td.rune-weak,
+td.rune-wither,
+td.rune-to,
+td.rune-from,
+td.rune-dup,
+td.rune-pump {
+	background-color: #c99868;
+}
+
+td.rune-weak:before {
+	content: "W";
+}
+
+td.rune-wither:before {
+	content: "H";
+}
+
+td.rune-to:before,
+td.rune-to-charged:before {
+	content: "T";
+}
+td.rune-to-charged {
+	background-color: #c9ff68
+}
+
+td.rune-from:before {
+	content: "F";
+}
+
+td.rune-dup:before,
+td.rune-dup-charged:before {
+	content: "D";
+}
+td.rune-dup-charged {
+	background-color: #c9ff68
+}
+
+td.rune-pump:before {
+	content: "P";
+}
+
+td.chieftain {
+	background-color: #cc0000;
+}
+
+td.goblin {
+	background-color: #ff0000;
+}
+
+td.skeleton {
+	background-color: #cc0000;
+}
+
+td.champion {
+	background-color: #550000;
+}
+
+td.golem {
+	background-color: #000000;
+}
+
+td.guardian {
+	background-color: #000000;
+}
+
+td.chieftain:before,
+td.champion:before,
+td.goblin:before {
+	content: "웃";
+	font-size: 0.91666em;
+}
+
+td.golem:before {
+	content: "웃";
+	color: #cc0000;
+	font-weight: bold;
+	font-size: 0.91666em;
+}
+
+td.guardian:before {
+	content: "웃";
+	color: #862424;
+	font-weight: bold;
+	font-size: 0.91666em;
+}
+
+td.skeleton:before{
+	color: #ffffff;
+	content: "웃";
+}
+
+.enemy-hp {
+	background-color: #008f0080;
+	height: 33%;
+	position: absolute;
+	top: 0;
+	left: 0;
+}
+
+td.coal {
+	background-color: #222222;
+}
+
+td.coal:before {
+	content: "○";
+	color: #ffffff;
+	font-size: 1.166em;
+	padding-bottom: 10%;
+}
+
+.timeline > div.Barrier-Drain {
+	background-color: #3434dd;
+}
+
+.timeline > div.Portal,
+.timeline > div.Enter-Barrier,
+td.barrier,
+td.zone {
+	background-color: #3939ff;
+}
+
+.barrier-related {
+	color: #3939ff;
+}
+
+td.zone:before {
+	content: "Θ";
+	color: #1d8d1d;
+	font-size: 1.166em;
+	padding-bottom: 10%;
+}
+
+.timeline > div.Complete-Goal,
+td.goal,
+td.lockedgoal
+td.exit {
+	background-color: #17ac17;
+}
+
+td.goal:before {
+	content: "√";
+	color: #1a461a;
+	font-size: 1.166em;
+	padding-bottom: 10%;
+}
+td.lockedgoal:before {
+	content: "☑";
+	color: #1a461a;
+	font-size: 1.166em;
+	padding-bottom: 10%;
+}
+
+
+td.exit:before {
+	content: "♦";
+	color: #1a461a;
+	font-size: 1.166em;
+	padding-bottom: 10%;
+}
+
+td.spring {
+	background-color: #1111a7;
+}
+
+td.watery-1 { box-shadow: inset 1em 1em #1111a710; }
+td.watery-2 { box-shadow: inset 1em 1em #1111a720; }
+td.watery-3 { box-shadow: inset 1em 1em #1111a730; }
+td.watery-4 { box-shadow: inset 1em 1em #1111a740; }
+td.watery-5 { box-shadow: inset 1em 1em #1111a750; }
+td.watery-6 { box-shadow: inset 1em 1em #1111a760; }
+td.watery-7 { box-shadow: inset 1em 1em #1111a770; }
+td.watery-8 { box-shadow: inset 1em 1em #1111a780; }
+td.watery-9 { box-shadow: inset 1em 1em #1111a790; }
+td.watery-10 { box-shadow: inset 1em 1em #1111a7a0; }
+td.watery-11 { box-shadow: inset 1em 1em #1111a7c0; }
+
+td::before {
+	position: absolute;
+	top: 0;
+	left: 0;
+	text-align: center;
+	height: 100%;
+	width: 100%;
+	box-sizing: border-box;
+	/* border: 2px solid transparent; */
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
+td:after {
+	padding: 2px;
+	display: none;
+	position: absolute;
+	top: 2px;
+	left: 10px;
+	width: max-content;
+	background-color: #fef4c5;
+	border: 1px solid #d4b943;
+	border-radius: 2px;
+	z-index: 15;
+	pointer-events: none;
+	content: attr(data-content);
+	font-size: 16px;
+}
+
+td:hover:after {
+	display: block;
+}
+
+#message-box {
+	position: fixed;
+	top: 0;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	background-color: #00000099;
+	z-index: 100;
+}
+
+#message-wrapper {
+	position: absolute;
+	top: 30%;
+	left: 20%;
+	right: 20%;
+	width: 30%;
+	background-color: #aacccc;
+	padding: 10px;
+	border-radius: 20px;
+	border: 2px solid #00000044;
+	text-align: center;
+}
+
+.message-link {
+	cursor: pointer;
+}
+
+#message-text {
+	max-height: 40vh;
+	overflow-y: auto;
+	scrollbar-width: thin;
+}
+
+#config-box {
+	position: fixed;
+	top: 0;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	background-color: #00000099;
+	z-index: 100;
+}
+
+#config-wrapper {
+	position: absolute;
+	top: 30%;
+	left: 30%;
+	right: 30%;
+	width: 30%;
+	background-color: #aacccc;
+	padding: 10px;
+	border-radius: 20px;
+	border: 2px solid #00000044;
+	text-align: center;
+	user-select: none;
+}
+
+#config-wrapper .option {
+	width: 100%;
+}
+
+#loop-log-box {
+	position: fixed;
+	top: 0;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	background-color: #00000099;
+	z-index: 100;
+}
+
+#loop-log-wrapper {
+	position: absolute;
+	top: 10%;
+	left: 20%;
+	right: 20%;
+	width: 40%;
+	background-color: #aacccc;
+	padding: 10px;
+	border-radius: 20px;
+	border: 2px solid #00000044;
+	text-align: center;
+	user-select: none;
+}
+
+.loop-zone {
+	display: inline-block;
+	width: 25px;
+	height: 25px;
+	line-height: 25px;
+	border: 1px solid;
+	cursor: pointer;
+}
+
+.loop-zone.active {
+	background-color: #279427;
+}
+
+#load-loop-log {
+	display: inline-block;
+	border: 1px solid black;
+	height: 25px;
+	line-height: 25px;
+	padding: 0 5px;
+	cursor: pointer;
+}
+
+#loop-stats,
+#loop-actions,
+#loop-prev {
+	width: 32%;
+	display: inline-block;
+	max-height: 70vh;
+	scrollbar-width: thin;
+	vertical-align: top;
+}
+
+.log-entry {
+	display: flex;
+	justify-content: space-between;
+	padding: 2px 5px;
+}
+
+.log-entry .description {
+	visibility: hidden;
+	position: absolute;
+	margin-top: 20px;
+	left: 5px;
+	width: 180px;
+	background: #99bbbb;
+	border: 1px solid #00000033;
+	z-index: 5;
+	pointer-events: none;
+	padding: 2px;
+	color: #000000;
+}
+
+.log-entry:hover:not(:first-child) .description {
+	visibility: visible;
+}
+
+.log-entry.previous {
+	cursor: pointer;
+}
+
+.log-entry.previous .pin {
+	color: #ffffff;
+	border: 1px;
+}
+
+.log-entry.previous .pin.pinned {
+	color: #279427;
+}
+
+.log-entry.previous .pin.disabled {
+	color: #cccccc;
+}
+
+.queue-buttons {
+	position: sticky;
+	display: inline-block;
+	right: 2px;
+	z-index: 15;
+}
+
+.queue-buttons .button {
+	border-radius: 5px;
+	border: none;
+	margin-top: -3px;
+}
+
+.damage, .work-progress {
+	background-color: #ff0000aa;
+	position: sticky;
+	left: 0;
+	top: 0px;
+	pointer-events: none;
+	height: 3px;
+	/* z-index: 30; */
+	opacity: 1;
+	transition: opacity 0.4s;
+}
+
+.damage[style*="100%"] {
+	opacity: 0;
+}
+.work-progress {
+	background-color: #0000ff55;
+	width: 0%;
+	transition: opacity 0.35s 0.05s;
+}
+
+.work-progress[style*=" 0%"] {
+	opacity: 0;
+	transition: opacity 0s;
+}
+
+.dead-clone {
+	background-color: #ff000055;
+}
+
+.dead-clone.selected-clone {
+	background-color: #ff450055;
+}
+
+.out-of-mana {
+	background-color: #607d8b55;
+	transition: background-color 0.4s;
+}
+
+#saved-queues {
+	margin-top: 10px;
+	padding: 5px 10px 5px 5px;
+	border: 1px solid #999;
+	border-radius: 10px;
+	user-select: none;
+}
+
+#saved-queues-inner {
+	will-change: opacity;
+}
+
+.saved-queue .queue-inner {
+	min-width: calc(100% - 212px);
+}
+
+.saved-name {
+	width: 100px;
+	height: 23px;
+	margin-top: -2px;
+	border: none;
+	border-top-left-radius: 3px;
+	border-bottom-left-radius: 5px;
+	margin-left: -2px;
+	text-align: center;
+}
+
+.icon-select {
+	border: none;
+	-webkit-appearance: none;
+	-moz-appearance: none;
+	height: 20px;
+	width: 20px;
+	vertical-align: top;
+}
+
+.colour-select {
+	display: inline-block;
+	margin-top: -2px;
+	height: 24px;
+	width: 24px;
+	border: none;
+	padding: 0;
+	vertical-align: top;
+}
+
+.cursor {
+	display: none;
+	height: 100%;
+	width: 2px;
+	background-color: black;
+	position: absolute;
+	top: 0;
+}
+
+.cursor.visible {
+	display: block;
+	animation-name: blink;
+	animation-duration: 2s;
+	animation-iteration-count: infinite;
+}
+
+@keyframes blink {
+	from {opacity: 1;}
+	to {opacity: 0.5;}
+}
+
+#runes {
+	display: flex;
+	flex-direction: column;
+}
+
+#spells {
+	display: none;
+}
+
+#runes h3, div#spells h3, .bottom-vertical-block h3 {margin: 0.5em;}
+
+/* #runes.active-pane,
+#spells.active-pane {
+	display: block;
+} */
+
+.rune-spell-toggle {
+	display: none;
+}
+
+.not-available {
+	background-color: #ff000055;
+}
+
+#search-saved {
+	margin-bottom: 2px;
+}
+
+hr {
+	width: 100%;
+}
+
+.bottom-block:not(:hover)>.queue-buttons {
+	opacity: 0;
+}
+
+.bottom-block:not(:hover)>.queue-time {
+	right: 4px;
+	transition: right 0.4s 1s;
+}
+
+.hidden-action,
+.block-row.hidden-action {
+	display: none;
+}
