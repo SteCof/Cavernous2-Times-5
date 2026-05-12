@@ -28,6 +28,7 @@ class Clone {
         this.createTimeline();
         this.reset();
         zones.forEach(z => z.queues.push(new ActionQueue(this.id)));
+	this.damageAtStartOfSalt=0
     }
     enterZone() {
         this.x = 0;
@@ -46,15 +47,14 @@ class Clone {
         this.damage = 0;
         this.styleDamage();
         this.resetTimeLine();
+	this.damageAtStartOfSalt=0;
     }
     takeDamage(amount) {
-        const damageMult=getRealmMult("Hostile Realm");
-	let modifiedDamage = amount/(damageMult);
-	if (getStat("Health").current - this.damage > 0.1) {
-            this.damage = Math.min(getStat("Health").current - 0.05, this.damage + modifiedDamage);
+        if (getStat("Health").current - this.damage > 0.1) {
+            this.damage = Math.min(getStat("Health").current - 0.05, this.damage + amount);
         }
         else {
-            this.damage += modifiedDamage;
+            this.damage += amount;
         }
         this.minHealth = Math.min(this.minHealth, this.startDamage - this.damage);
         if (this.damage < 0)
