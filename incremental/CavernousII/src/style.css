@@ -353,6 +353,7 @@ svg {
 .timeline > div.Mine-Travertine,
 .timeline > div.Mine-Granite,
 .timeline > div.Mine-Basalt,
+.timeline > div.Mine-Plume,
 .timeline > div.Mine-Chert,
 .timeline > div.Mine-Iron,
 .timeline > div.Mine-Coal,
@@ -444,6 +445,17 @@ svg {
 .timeline > div.Create-Hammer
 {
 	background-color: #aaff00;
+}
+
+.timeline > div.Create-Crystal-Ball,
+.timeline > div.Create-Runestone
+{
+	background-color: #aacc77;
+}
+
+.timeline > div.Mine-Obsidian
+{
+	background: repeating-linear-gradient(#222222, #111111 4px, #555555 3px, #aaaaaa 4px);
 }
 
 .selected-clone,
@@ -930,6 +942,14 @@ td.basalt {
 	background: repeating-linear-gradient(-45deg, #2b251d, #2b251d 1px, #4b453d 2px, #5b554d 2px);
 }
 
+td.basaltplume {
+	background: repeating-linear-gradient(-60deg, #2b251d, #2b251d 1px, #4b453d 3px, #5b554d 1px);
+}
+
+td.obsidian {
+	background: repeating-radial-gradient(#2f2f1d, #2b251d 3px, #4b453d 2px, #111111 2px, #bbbbbb 4px, #ff55ff 3px);
+}
+
 td.chert {
 	background: repeating-linear-gradient(60deg, #000000, #4b453d 1px, #000000 2px, #7b756d 2px);
 }
@@ -1062,6 +1082,22 @@ td.armour3:before {
 	font-weight: bold;
 	padding-bottom: 0.2em;
 }
+
+td.crystalshaper:before {
+	content: "★";
+}
+
+td.crystalshaper {
+	background-color: #90ee90;
+}
+
+td.runecarver:before {
+	content: "ᛝ";
+}
+
+td.runecarver {
+	background-color: #90ee90;
+}		
 
 td.axe:before {
 	content: "¢";
@@ -1224,6 +1260,7 @@ td.zone:before {
 
 .timeline > div.Complete-Goal,
 td.goal,
+td.lockedgoal
 td.exit {
 	background-color: #17ac17;
 }
@@ -1234,6 +1271,13 @@ td.goal:before {
 	font-size: 1.166em;
 	padding-bottom: 10%;
 }
+td.lockedgoal:before {
+	content: "☑";
+	color: #1a461a;
+	font-size: 1.166em;
+	padding-bottom: 10%;
+}
+
 
 td.exit:before {
 	content: "♦";
